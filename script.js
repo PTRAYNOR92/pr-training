@@ -11,9 +11,12 @@ let traitValues = {};
 let openaiApiKey = '';
 let elevenlabsApiKey = '';
 
+// NEW: Conversation memory
+let conversationHistory = [];
+let isRecording = false;
+
 // Voice recognition variables
 let recognition = null;
-let isListening = false;
 let speechSynthesis = window.speechSynthesis;
 
 // Trait definitions for different scenarios
@@ -206,22 +209,35 @@ const personas = {
     ]
 };
 
-// System prompts for different persona types
+// ENHANCED System prompts with memory and personality
 const systemPrompts = {
-    'committee-chair': 'You are a parliamentary select committee chair. You are professional, procedural, and focused on getting clear evidence. Ask detailed questions about policy implementation, costs, timelines, and effectiveness. Follow up when answers are vague.',
-    'committee-skeptical': 'You are a skeptical MP on a select committee. You challenge assumptions, question the effectiveness of policies, and ask tough questions about whether proposed solutions will actually work.',
-    'committee-detail-oriented': 'You are a detail-oriented select committee member. You focus on statistics, precise timelines, budget breakdowns, and specific implementation details. You ask for exact figures.',
-    'media-paxman': 'You are an aggressive BBC-style interviewer in the tradition of Jeremy Paxman. You interrupt when answers are evasive, repeat questions that haven\'t been answered directly, and use phrases like "That\'s not what I asked".',
-    'media-radio': 'You are a radio host conducting a live interview. You work with time constraints, need clear soundbites, and ask questions that a general audience can understand.',
-    'media-investigative': 'You are an investigative journalist who has done extensive research. You ask probing questions about controversies, follow paper trails, and reference specific documents.',
-    'media-friendly': 'You are a friendly but professional interviewer. You give guests space to explain complex issues while maintaining journalistic rigor.',
-    'consultation-concerned-resident': 'You are a concerned local resident at a public consultation. You ask emotional questions about how policies will affect your daily life and community.',
-    'consultation-business-owner': 'You are a local business owner concerned about practical impacts. You ask about regulations, compliance costs, and economic effects.',
-    'consultation-activist': 'You are a well-informed community activist. You challenge policies on social justice grounds and push for stronger action.',
-    'interview-tough-hr': 'You are a tough HR director conducting a job interview. You ask direct, probing questions about experience, achievements, and cultural fit. You test candidates under pressure.',
-    'interview-technical-lead': 'You are a technical interviewer assessing candidates\' skills. You ask deep technical questions, present problems to solve, and evaluate technical competency.',
-    'interview-panel': 'You are part of a panel interview. You ask varied questions from different perspectives, covering both technical skills and soft skills comprehensively.',
-    'interview-friendly-manager': 'You are a supportive hiring manager. You ask encouraging but thorough questions, focusing on the candidate\'s potential and growth mindset.'
+    'committee-chair': 'You are a parliamentary select committee chair. You are professional but persistent. REMEMBER everything the witness has said previously and build on it. If they contradict themselves, point it out. If they avoid questions, press them harder. Ask specific follow-up questions based on their previous answers. Keep responses to 1-2 sentences maximum.',
+    
+    'committee-skeptical': 'You are a skeptical MP who challenges everything. REMEMBER their previous answers and find inconsistencies. If they said something earlier that contradicts their current answer, call it out directly. Be suspicious of vague answers and demand specifics. Stay in character as a skeptical politician.',
+    
+    'committee-detail-oriented': 'You are obsessed with precise details and statistics. REMEMBER exact figures they\'ve mentioned and challenge inconsistencies. If they give a different number than before, question it aggressively. Demand specific timelines, costs, and evidence.',
+    
+    'media-paxman': 'You are Jeremy Paxman. INTERRUPT them if they waffle. REMEMBER everything they\'ve said and use it against them. "You just said X, now you\'re saying Y - which is it?" Be aggressive, confrontational. If they don\'t answer directly, say "That\'s not what I asked." Keep questions short and punchy.',
+    
+    'media-radio': 'You are a radio host with time pressure. REMEMBER their key points and challenge them quickly. "Earlier you said X, but that contradicts Y." Keep everything fast-paced and push for clear soundbites. Reference their previous answers to create pressure.',
+    
+    'media-investigative': 'You are an investigative journalist who has done research. REMEMBER everything they\'ve told you and compare it to "your research." Challenge inconsistencies: "But you just told me X, my sources say Y." Be thorough and build cases from their answers.',
+    
+    'media-friendly': 'You are supportive but still professional. REMEMBER their answers and ask gentle follow-ups. "You mentioned X earlier, can you expand on that?" Build on what they\'ve said constructively.',
+    
+    'consultation-concerned-resident': 'You are an emotional local resident. REMEMBER what they\'ve promised and hold them to it. "You said earlier that X would happen, but how?" Get personal and emotional. Stay in character as a worried resident, not a politician.',
+    
+    'consultation-business-owner': 'You are a practical business owner focused on costs. REMEMBER any figures or commitments they\'ve made. "You mentioned X cost earlier, how does that affect my business?" Stay focused on practical business impacts.',
+    
+    'consultation-activist': 'You are a passionate activist. REMEMBER their commitments and challenge them. "Earlier you said you cared about X, but your policy does Y." Be confrontational but informed. Challenge them on their values.',
+    
+    'interview-tough-hr': 'You are a tough HR director. REMEMBER their previous answers about experience and challenge inconsistencies. "You said earlier you managed X people, but that seems to contradict what you just said." Be direct and probing.',
+    
+    'interview-technical-lead': 'You are testing technical competency. REMEMBER their technical claims and build on them. "You mentioned you know X technology, how would you handle Y problem with it?" Progressive questioning that builds complexity.',
+    
+    'interview-panel': 'You represent multiple perspectives. REMEMBER all their answers and approach from different angles. "From a technical perspective you said X, but from a management angle, how do you reconcile that with Y?"',
+    
+    'interview-friendly-manager': 'You are encouraging but thorough. REMEMBER their examples and ask for more details. "That\'s interesting - you mentioned X project, what did you learn from that experience?" Build on their stories positively.'
 };
 
 // Initialize the application
@@ -229,7 +245,6 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeVoiceRecognition();
     setupEventListeners();
 });
-
 function initializeVoiceRecognition() {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -239,7 +254,8 @@ function initializeVoiceRecognition() {
         recognition.lang = 'en-GB';
         
         recognition.onstart = function() {
-            updateVoiceStatus('listening', 'Listening...');
+            updateVoiceStatus('listening', 'Listening... (click to stop)');
+            updateVoiceButton('recording');
         };
         
         recognition.onresult = function(event) {
@@ -252,11 +268,16 @@ function initializeVoiceRecognition() {
         recognition.onerror = function(event) {
             updateVoiceStatus('error', 'Voice recognition error. Please try typing.');
             console.error('Speech recognition error:', event.error);
+            isRecording = false;
+            updateVoiceButton('idle');
         };
         
         recognition.onend = function() {
-            isListening = false;
-            updateVoiceButton();
+            isRecording = false;
+            updateVoiceButton('idle');
+            if (document.getElementById('voice-status').textContent.includes('Listening')) {
+                updateVoiceStatus('ready', 'Ready for voice input');
+            }
         };
     } else {
         console.warn('Speech recognition not supported');
@@ -502,6 +523,55 @@ function updateSummary() {
     }
 }
 
+// NEW: Enhanced voice control (click to start/stop)
+function toggleVoiceRecognition() {
+    if (!recognition) {
+        alert('Voice recognition not supported in this browser');
+        return;
+    }
+    
+    if (isRecording) {
+        // Stop recording
+        recognition.stop();
+        isRecording = false;
+        updateVoiceButton('idle');
+        updateVoiceStatus('ready', 'Ready for voice input');
+    } else {
+        // Start recording
+        recognition.start();
+        isRecording = true;
+        updateVoiceButton('recording');
+        updateVoiceStatus('listening', 'Listening... (click to stop)');
+    }
+}
+
+function updateVoiceButton(state) {
+    const button = document.getElementById('voice-toggle');
+    const icon = document.getElementById('voice-icon');
+    const text = document.getElementById('voice-text');
+    
+    if (!button || !icon || !text) return;
+    
+    button.className = 'voice-btn';
+    
+    if (state === 'recording') {
+        button.classList.add('recording');
+        icon.textContent = '🔴';
+        text.textContent = 'Recording... (click to stop)';
+    } else {
+        button.classList.add('idle');
+        icon.textContent = '🎤';
+        text.textContent = 'Click to Speak';
+    }
+}
+
+function updateVoiceStatus(status, message) {
+    const statusElement = document.getElementById('voice-status');
+    if (statusElement) {
+        statusElement.textContent = message;
+        statusElement.className = `voice-status ${status}`;
+    }
+}
 function saveApiKeys() {
     const openaiKey = document.getElementById('openai-key').value.trim();
     const elevenlabsKey = document.getElementById('elevenlabs-key').value.trim();
@@ -540,6 +610,9 @@ function startTraining() {
 }
 
 function beginTrainingSession() {
+    // Reset conversation history for new session
+    conversationHistory = [];
+    
     goToPage(5);
     updateStep(5);
     
@@ -577,51 +650,6 @@ function beginTrainingSession() {
     updateVoiceStatus('ready', 'Ready for voice input');
 }
 
-function toggleVoiceRecognition() {
-    if (!recognition) {
-        alert('Voice recognition not supported in this browser');
-        return;
-    }
-    
-    if (isListening) {
-        recognition.stop();
-        isListening = false;
-    } else {
-        recognition.start();
-        isListening = true;
-    }
-    
-    updateVoiceButton();
-}
-
-function updateVoiceButton() {
-    const button = document.getElementById('voice-toggle');
-    const icon = document.getElementById('voice-icon');
-    const text = document.getElementById('voice-text');
-    
-    if (!button || !icon || !text) return;
-    
-    button.className = 'voice-btn';
-    
-    if (isListening) {
-        button.classList.add('recording');
-        icon.textContent = '🔴';
-        text.textContent = 'Recording...';
-    } else {
-        button.classList.add('idle');
-        icon.textContent = '🎤';
-        text.textContent = 'Click to Speak';
-    }
-}
-
-function updateVoiceStatus(status, message) {
-    const statusElement = document.getElementById('voice-status');
-    if (statusElement) {
-        statusElement.textContent = message;
-        statusElement.className = `voice-status ${status}`;
-    }
-}
-
 function handleKeyPress(event) {
     if (event.key === 'Enter') {
         sendMessage();
@@ -634,6 +662,13 @@ async function sendMessage() {
     
     const message = input.value.trim();
     if (!message) return;
+    
+    // Add user message to conversation history
+    conversationHistory.push({
+        role: 'user',
+        content: message,
+        timestamp: new Date().toISOString()
+    });
     
     addMessage(message, 'user');
     input.value = '';
@@ -655,6 +690,13 @@ async function sendMessage() {
         if (typingElement) {
             typingElement.remove();
         }
+        
+        // Add AI response to conversation history
+        conversationHistory.push({
+            role: 'interviewer',
+            content: response,
+            timestamp: new Date().toISOString()
+        });
         
         addMessage(response, 'interviewer');
         
@@ -697,8 +739,21 @@ async function getAIResponse(userMessage) {
     const personaKey = `${selectedScenario}-${selectedPersona}`;
     let systemPrompt = systemPrompts[personaKey] || 'You are a professional interviewer.';
     
+    // Build conversation memory context
+    let conversationContext = '';
+    if (conversationHistory.length > 2) {
+        conversationContext = '\n\nPREVIOUS CONVERSATION:\n';
+        conversationHistory.slice(-6).forEach(entry => {
+            if (entry.role === 'user') {
+                conversationContext += `THEIR ANSWER: "${entry.content}"\n`;
+            } else {
+                conversationContext += `YOUR QUESTION: "${entry.content}"\n`;
+            }
+        });
+        conversationContext += '\nREMEMBER: Reference their previous answers. Point out contradictions. Build on what they\'ve said. Be reactive, not generic.\n';
+    }
+    
     // Add trait customization
-    const traits = traitDefinitions[selectedScenario];
     let traitInstructions = '\n\nCustomized traits for this session:\n';
     
     // Add scenario context
@@ -726,9 +781,16 @@ async function getAIResponse(userMessage) {
             if (value >= 8) traitInstructions += `- Ask very complex, challenging questions (${value}/10)\n`;
             else if (value <= 3) traitInstructions += `- Keep questions basic and straightforward (${value}/10)\n`;
         }
+        if (key === 'followUp') {
+            if (value >= 8) traitInstructions += `- Be relentless in follow-up questioning (${value}/10)\n`;
+        }
+        if (key === 'emotion') {
+            if (value >= 8) traitInstructions += `- Be very emotional and passionate (${value}/10)\n`;
+        }
+        if (key === 'hostility') {
+            if (value >= 8) traitInstructions += `- Be openly hostile and antagonistic (${value}/10)\n`;
+        }
     });
-    
-    systemPrompt += traitInstructions + scenarioContext;
     
     // Add document context
     let contextualInfo = '';
@@ -742,6 +804,10 @@ async function getAIResponse(userMessage) {
         }
     }
     
+    // Combine all context
+    const fullPrompt = systemPrompt + conversationContext + traitInstructions + scenarioContext + contextualInfo + 
+        '\n\nIMPORTANT: Keep responses to 1-2 sentences maximum. Be conversational and human. Reference their previous answers. Stay in character.';
+    
     try {
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
@@ -754,15 +820,15 @@ async function getAIResponse(userMessage) {
                 messages: [
                     {
                         role: 'system',
-                        content: systemPrompt + contextualInfo + '\n\nKeep responses concise but challenging. Adapt your style based on the trait settings.'
+                        content: fullPrompt
                     },
                     {
                         role: 'user',
                         content: userMessage
                     }
                 ],
-                max_tokens: 200,
-                temperature: 0.7
+                max_tokens: 100, // Reduced for shorter responses
+                temperature: 0.8 // Increased for more natural conversation
             })
         });
         
@@ -827,6 +893,9 @@ async function speakResponse(text) {
 
 function endTraining() {
     if (confirm('Are you sure you want to end this training session?')) {
+        // Reset conversation history
+        conversationHistory = [];
+        
         goToPage(1);
         updateStep(1);
         
@@ -858,6 +927,7 @@ function endTraining() {
         document.querySelectorAll('.persona-btn').forEach(btn => {
             btn.classList.remove('active');
         });
+        
         // Disable buttons
         const nextBtn2 = document.getElementById('next-to-page-2');
         const nextBtn4 = document.getElementById('next-to-page-4');
@@ -865,6 +935,7 @@ function endTraining() {
         if (nextBtn4) nextBtn4.disabled = true;
     }
 }
+
 // Global functions for onclick handlers
 window.goToPage = goToPage;
 window.selectScenario = selectScenario;
