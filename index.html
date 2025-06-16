@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Training Pro - Master Your Professional Presence</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">Training Pro</div>
+            <ul class="nav-links">
+                <li><a href="#home">Home</a></li>
+                <li><a href="#training">Training</a></li>
+                <li><a href="#about">About</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <h1>Master Your Professional Presence</h1>
+            <p>AI-powered voice training for interviews, media, committees, and consultations</p>
+        </div>
+    </section>
+
+    <div class="container">
+        <div class="main-content">
+            <div class="step-indicator">
+                <div class="step active" id="step-1">
+                    <div class="step-number">1</div>
+                    <span class="step-text">Choose Scenario</span>
+                </div>
+                <div class="step" id="step-2">
+                    <div class="step-number">2</div>
+                    <span class="step-text">Customize Details</span>
+                </div>
+                <div class="step" id="step-3">
+                    <div class="step-number">3</div>
+                    <span class="step-text">Select Interviewer</span>
+                </div>
+                <div class="step" id="step-4">
+                    <div class="step-number">4</div>
+                    <span class="step-text">Final Preparation</span>
+                </div>
+                <div class="step" id="step-5">
+                    <div class="step-number">5</div>
+                    <span class="step-text">Training Session</span>
+                </div>
+            </div>
+
+            <!-- Page 1: Scenario Selection -->
+            <div class="page active" id="page-1">
+                <h2>Choose Your Training Scenario</h2>
+                <div class="scenarios">
+                    <div class="scenario-card" data-scenario="committee">
+                        <div class="icon">🏛️</div>
+                        <h3>Select Committee</h3>
+                        <p>Parliamentary committee appearances with detailed policy questioning</p>
+                    </div>
+                    <div class="scenario-card" data-scenario="media">
+                        <div class="icon">📺</div>
+                        <h3>Media Interview</h3>
+                        <p>TV, radio, and print interviews with various journalist styles</p>
+                    </div>
+                    <div class="scenario-card" data-scenario="consultation">
+                        <div class="icon">🗣️</div>
+                        <h3>Public Consultation</h3>
+                        <p>Community meetings and public engagement sessions</p>
+                    </div>
+                    <div class="scenario-card" data-scenario="interview">
+                        <div class="icon">💼</div>
+                        <h3>Job Interview</h3>
+                        <p>Professional interviews across all industries and levels</p>
+                    </div>
+                </div>
+                <div class="navigation-buttons">
+                    <div></div>
+                    <button class="btn btn-primary" id="next-to-page-2" disabled onclick="goToPage(2)">Continue</button>
+                </div>
+            </div>
+
+            <!-- Page 2: Scenario Customization -->
+            <div class="page" id="page-2">
+                <h2>Customize Your Scenario</h2>
+                <div class="scenario-inputs">
+                    <div class="input-group">
+                        <label for="scenario-description">Scenario Description</label>
+                        <textarea 
+                            id="scenario-description" 
+                            placeholder="Describe the specific situation you're preparing for..."
+                            rows="3"
+                        ></textarea>
+                        <small>What specific situation or issue will you be questioned about?</small>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="your-role">Your Role/Position</label>
+                        <input 
+                            type="text" 
+                            id="your-role" 
+                            placeholder="e.g., Energy Minister, Software Engineer, Marketing Director"
+                        >
+                        <small>What's your position or role in this scenario?</small>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="company-context">Company/Organization (Optional)</label>
+                        <input 
+                            type="text" 
+                            id="company-context" 
+                            placeholder="e.g., TechCorp, Department for Energy, Local Council"
+                        >
+                        <small>What organization are you representing?</small>
+                    </div>
+                </div>
+
+                <div class="upload-sections">
+                    <div class="upload-section">
+                        <h4>📋 Supporting Documents</h4>
+                        <div class="upload-area" onclick="document.getElementById('policy-input').click()">
+                            <p>Upload relevant documents, policies, or materials</p>
+                            <p style="font-size: 0.9rem; opacity: 0.7;">PDF, Word, or text files</p>
+                        </div>
+                        <input type="file" id="policy-input" style="display: none;" accept=".pdf,.doc,.docx,.txt" multiple>
+                        <div id="policy-files"></div>
+                    </div>
+                    
+                    <div class="upload-section">
+                        <h4>📊 Briefing Materials</h4>
+                        <div class="upload-area" onclick="document.getElementById('briefing-input').click()">
+                            <p>Upload statistics, reports, background information</p>
+                            <p style="font-size: 0.9rem; opacity: 0.7;">PDF, Word, or text files</p>
+                        </div>
+                        <input type="file" id="briefing-input" style="display: none;" accept=".pdf,.doc,.docx,.txt" multiple>
+                        <div id="briefing-files"></div>
+                    </div>
+                </div>
+
+                <div class="navigation-buttons">
+                    <button class="btn btn-secondary" onclick="goToPage(1)">Back</button>
+                    <button class="btn btn-primary" onclick="goToPage(3)">Continue</button>
+                </div>
+            </div>
+
+            <!-- Page 3: Persona Selection -->
+            <div class="page" id="page-3">
+                <h2>Select Your Interviewer</h2>
+                <div class="personas" id="personas-container">
+                    <!-- Populated by JavaScript -->
+                </div>
+
+                <div class="trait-sliders" id="trait-sliders" style="display: none;">
+                    <h4>Customize Interviewer Traits</h4>
+                    <div class="sliders-grid" id="sliders-container">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+
+                <div class="navigation-buttons">
+                    <button class="btn btn-secondary" onclick="goToPage(2)">Back</button>
+                    <button class="btn btn-primary" id="next-to-page-4" onclick="goToPage(4)" disabled>Continue</button>
+                </div>
+            </div>
+
+            <!-- Page 4: Final Preparation -->
+            <div class="page" id="page-4">
+                <h2>Final Preparation</h2>
+                <div style="text-align: center; padding: 2rem;">
+                    <div id="scenario-summary">
+                        <h3>Training Session Summary</h3>
+                        <div style="background: #f8f9fa; padding: 2rem; border-radius: 10px; margin: 2rem 0; text-align: left;">
+                            <p><strong>Scenario:</strong> <span id="summary-scenario"></span></p>
+                            <p><strong>Your Role:</strong> <span id="summary-role"></span></p>
+                            <p><strong>Interviewer:</strong> <span id="summary-persona"></span></p>
+                            <p><strong>Voice Training:</strong> Enabled</p>
+                        </div>
+                    </div>
+
+                    <div style="background: #e7f3ff; padding: 1.5rem; border-radius: 10px; margin: 2rem 0;">
+                        <h4>🎤 Voice Training Tips</h4>
+                        <ul style="text-align: left; margin-top: 1rem;">
+                            <li>Ensure your microphone is working</li>
+                            <li>Find a quiet environment</li>
+                            <li>Speak clearly and at normal pace</li>
+                            <li>You can fall back to typing if needed</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="navigation-buttons">
+                    <button class="btn btn-secondary" onclick="goToPage(3)">Back</button>
+                    <button class="btn btn-primary" onclick="startTraining()">Begin Training Session</button>
+                </div>
+            </div>
+
+            <!-- Page 5: Training Interface -->
+            <div class="page" id="page-5">
+                <div class="training-interface">
+                    <div class="training-header">
+                        <div class="training-status">
+                            <div class="status-item status-live">● TRAINING SESSION</div>
+                            <div class="status-item status-voice" id="voice-status-indicator">🎤 VOICE ENABLED</div>
+                        </div>
+                        <h3 id="training-title">Training Session</h3>
+                        <p id="persona-description"></p>
+                    </div>
+
+                    <div class="chat-container">
+                        <div class="chat-header">
+                            <h4>Live Training Session</h4>
+                        </div>
+                        <div class="chat-messages" id="chat-messages">
+                            <div class="message interviewer">
+                                <strong>Interviewer:</strong> Welcome to your training session. Are you ready to begin?
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="voice-controls">
+                        <button class="voice-btn idle" id="voice-toggle">
+                            <span id="voice-icon">🎤</span>
+                            <span id="voice-text">Click to Speak</span>
+                        </button>
+                    </div>
+
+                    <div class="voice-status" id="voice-status">Ready for voice input</div>
+
+                    <div class="chat-input">
+                        <input type="text" id="user-input" placeholder="Or type your response..." onkeypress="handleKeyPress(event)">
+                        <button onclick="sendMessage()">Send</button>
+                    </div>
+
+                    <div class="navigation-buttons">
+                        <button class="btn btn-secondary" onclick="endTraining()">End Session</button>
+                        <button class="btn btn-secondary" onclick="goToPage(1)">New Session</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Key Modal -->
+    <div class="api-key-modal" id="api-key-modal">
+        <div class="api-key-content">
+            <h3>Setup Required</h3>
+            <p>To use voice training, please enter your API keys:</p>
+            
+            <label for="openai-key">OpenAI API Key:</label>
+            <input type="password" id="openai-key" placeholder="sk-...">
+            
+            <label for="elevenlabs-key">ElevenLabs API Key (for voice):</label>
+            <input type="password" id="elevenlabs-key" placeholder="sk_...">
+            
+            <p style="font-size: 0.9rem; color: #666; margin: 1rem 0;">
+                Don't have keys? Get them at:<br>
+                • <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI API Keys</a><br>
+                • <a href="https://elevenlabs.io/app/speech-synthesis" target="_blank">ElevenLabs API Keys</a>
+            </p>
+            <button class="btn btn-primary" onclick="saveApiKeys()">Save & Continue</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
