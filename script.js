@@ -1,4 +1,4 @@
-// Complete script.js - Part 1
+// Complete Fixed script.js - Part 1
 // Global state variables
 let currentPage = 1;
 let selectedScenario = '';
@@ -127,7 +127,7 @@ const traitDefinitions = {
         }
     }
 };
-// Complete script.js - Part 2
+
 // Updated Personas for each scenario type
 const personas = {
     committee: [
@@ -209,10 +209,10 @@ const personas = {
         }
     ]
 };
-// Complete script.js - Part 3
-// Updated System prompts with memory and personality
+// Complete Fixed script.js - Part 2
+// CORRECTED System prompts with proper key mapping
 const systemPrompts = {
-    // COMMITTEE PERSONAS
+    // COMMITTEE PERSONAS - Keys must match exactly with persona IDs
     'committee-forensic-chair': 'Channel the select committee chair style of figures like Yvette Cooper or Hilary Benn - methodical, evidence-based questioning that builds cases systematically. Reference previous witness testimony, maintain formal parliamentary courtesy but be relentless in pursuing facts. Use the questioning approach seen in Hansard transcripts - start with context-setting, then drill down systematically. Remember everything they\'ve said and build your case witness by witness. Keep responses to 1-2 sentences maximum.',
     
     'committee-backbench-terrier': 'Embody the style of persistent backbench MPs like those who made their reputation holding power to account in select committees. You have no ministerial ambitions - just a burning need for truth. Apply the approach seen in parliamentary questioning where MPs circle back to unanswered questions multiple ways until getting real answers. You\'re not impressed by titles or evasions - you represent ordinary constituents who deserve straight answers. Keep responses to 1-2 sentences maximum.',
@@ -244,7 +244,7 @@ const systemPrompts = {
     
     'interview-supportive-developer': 'Focus on potential and growth mindset over perfect answers. Ask about learning experiences, how they handle failure, what they want to develop. Probe for curiosity, adaptability, and genuine enthusiasm for growth using supportive but thorough questioning techniques. Build on their examples positively while still challenging them. Keep responses to 1-2 sentences maximum.'
 };
-// Complete script.js - Part 4
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     initializeVoiceRecognition();
@@ -324,7 +324,7 @@ function selectScenario(scenario) {
     // Update step
     updateStep(1);
 }
-
+// Complete Fixed script.js - Part 3
 function goToPage(pageNumber) {
     // Hide current page
     document.querySelectorAll('.page').forEach(page => {
@@ -662,7 +662,7 @@ function handleKeyPress(event) {
         sendMessage();
     }
 }
-
+// Complete Fixed script.js - Part 4
 async function sendMessage() {
     const input = document.getElementById('user-input');
     if (!input) return;
@@ -742,9 +742,30 @@ function addMessage(message, sender) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
+// FIXED AI Response function with debugging
 async function getAIResponse(userMessage) {
+    // Fixed persona mapping with debugging
     const personaKey = `${selectedScenario}-${selectedPersona}`;
-    let systemPrompt = systemPrompts[personaKey] || 'You are a professional interviewer.';
+    
+    // Debug: Show what we're looking for
+    console.log('🔍 Debug Info:');
+    console.log('Selected Scenario:', selectedScenario);
+    console.log('Selected Persona:', selectedPersona);
+    console.log('Looking for key:', personaKey);
+    
+    // Get the system prompt with better fallback
+    let systemPrompt = systemPrompts[personaKey];
+    
+    if (!systemPrompt) {
+        console.warn('❌ No prompt found for:', personaKey);
+        console.log('Available keys:', Object.keys(systemPrompts));
+        
+        // Fallback to a basic prompt
+        systemPrompt = 'You are a professional interviewer conducting a training session. Ask relevant questions about the scenario and remember their previous answers. Keep responses to 1-2 sentences maximum.';
+        console.log('✅ Using fallback prompt');
+    } else {
+        console.log('✅ Found matching prompt');
+    }
     
     // Build conversation memory context
     let conversationContext = '';
@@ -775,29 +796,16 @@ async function getAIResponse(userMessage) {
         scenarioContext += `\nOrganization: ${companyContext}`;
     }
     
-    // Build trait instructions
-    Object.entries(traitValues).forEach(([key, value]) => {
-        if (key === 'aggressiveness' || key === 'pressure') {
-            if (value >= 8) traitInstructions += `- Be very confrontational and challenging (${value}/10)\n`;
-            else if (value <= 3) traitInstructions += `- Be polite and respectful (${value}/10)\n`;
-        }
-        if (key === 'interruption') {
-            if (value >= 8) traitInstructions += `- Interrupt frequently when answers are evasive (${value}/10)\n`;
-        }
-        if (key === 'difficulty') {
-            if (value >= 8) traitInstructions += `- Ask very complex, challenging questions (${value}/10)\n`;
-            else if (value <= 3) traitInstructions += `- Keep questions basic and straightforward (${value}/10)\n`;
-        }
-        if (key === 'followUp') {
-            if (value >= 8) traitInstructions += `- Be relentless in follow-up questioning (${value}/10)\n`;
-        }
-        if (key === 'emotion') {
-            if (value >= 8) traitInstructions += `- Be very emotional and passionate (${value}/10)\n`;
-        }
-        if (key === 'hostility') {
-            if (value >= 8) traitInstructions += `- Be openly hostile and antagonistic (${value}/10)\n`;
-        }
-    });
+    // Build trait instructions - simplified to avoid undefined errors
+    if (traitValues && typeof traitValues === 'object') {
+        Object.entries(traitValues).forEach(([key, value]) => {
+            if (value >= 8) {
+                traitInstructions += `- High ${key}: Be very challenging and intense (${value}/10)\n`;
+            } else if (value <= 3) {
+                traitInstructions += `- Low ${key}: Be gentle and supportive (${value}/10)\n`;
+            }
+        });
+    }
     
     // Add document context
     let contextualInfo = '';
@@ -814,6 +822,8 @@ async function getAIResponse(userMessage) {
     // Combine all context
     const fullPrompt = systemPrompt + conversationContext + traitInstructions + scenarioContext + contextualInfo + 
         '\n\nIMPORTANT: Keep responses to 1-2 sentences maximum. Be conversational and human. Reference their previous answers. Stay in character.';
+    
+    console.log('📝 Final prompt preview:', fullPrompt.substring(0, 200) + '...');
     
     try {
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -834,8 +844,8 @@ async function getAIResponse(userMessage) {
                         content: userMessage
                     }
                 ],
-                max_tokens: 100, // Reduced for shorter responses
-                temperature: 0.8 // Increased for more natural conversation
+                max_tokens: 100,
+                temperature: 0.8
             })
         });
         
@@ -844,9 +854,13 @@ async function getAIResponse(userMessage) {
         }
         
         const data = await response.json();
-        return data.choices[0].message.content;
+        const aiResponse = data.choices[0].message.content;
+        
+        console.log('🤖 AI Response:', aiResponse);
+        return aiResponse;
         
     } catch (error) {
+        console.error('💥 Error in getAIResponse:', error);
         if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
             throw new Error('Network error. Please ensure you have proper API access or deploy to a server.');
         } else {
@@ -943,6 +957,62 @@ function endTraining() {
     }
 }
 
+// Test function to verify persona mapping
+function testPersonaMapping() {
+    console.log('🧪 Testing Persona Mapping...');
+    
+    // Test all scenario-persona combinations
+    const testCombinations = [
+        // Committee
+        ['committee', 'forensic-chair'],
+        ['committee', 'backbench-terrier'],
+        ['committee', 'technical-specialist'],
+        
+        // Media
+        ['media', 'political-heavyweight'],
+        ['media', 'time-pressure-broadcaster'],
+        ['media', 'investigative-journalist'],
+        ['media', 'sympathetic-professional'],
+        
+        // Consultation
+        ['consultation', 'concerned-local'],
+        ['consultation', 'business-voice'],
+        ['consultation', 'informed-activist'],
+        
+        // Interview
+        ['interview', 'senior-stakeholder'],
+        ['interview', 'technical-evaluator'],
+        ['interview', 'panel-perspective'],
+        ['interview', 'supportive-developer']
+    ];
+    
+    let passedTests = 0;
+    let totalTests = testCombinations.length;
+    
+    testCombinations.forEach(([scenario, persona]) => {
+        const key = `${scenario}-${persona}`;
+        const prompt = systemPrompts[key];
+        
+        if (prompt) {
+            console.log(`✅ ${key} → Found prompt`);
+            passedTests++;
+        } else {
+            console.error(`❌ ${key} → Missing prompt!`);
+        }
+    });
+    
+    console.log(`\n📊 Test Results: ${passedTests}/${totalTests} passed`);
+    
+    if (passedTests === totalTests) {
+        console.log('🎉 All persona mappings working correctly!');
+    } else {
+        console.error('💥 Some persona mappings are broken - check the keys above');
+        console.log('Available prompt keys:', Object.keys(systemPrompts));
+    }
+    
+    return passedTests === totalTests;
+}
+
 // Global functions for onclick handlers
 window.goToPage = goToPage;
 window.selectScenario = selectScenario;
@@ -953,3 +1023,4 @@ window.endTraining = endTraining;
 window.handleKeyPress = handleKeyPress;
 window.sendMessage = sendMessage;
 window.toggleVoiceRecognition = toggleVoiceRecognition;
+window.testPersonaMapping = testPersonaMapping;
