@@ -24,28 +24,25 @@ let isRecording = false;
 let recognition = null;
 let speechSynthesis = window.speechSynthesis;
 
-// PDF.js setup - Load from CDN
+// FIXED: PDF.js setup with working CDN
 let pdfjsLib = null;
 
-// Initialize PDF.js when page loads
+// UPDATED: Initialize PDF.js with current working CDN
 async function initializePDFJS() {
     try {
-        // Load PDF.js from CDN
-        const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-        document.head.appendChild(script);
+        // Load PDF.js using ES modules from official CDN
+        pdfjsLib = await import('https://mozilla.github.io/pdf.js/build/pdf.mjs');
         
-        script.onload = () => {
-            pdfjsLib = window['pdfjs-dist/build/pdf'];
-            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-            console.log('✅ PDF.js loaded successfully');
-        };
+        // Set worker source to official CDN
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://mozilla.github.io/pdf.js/build/pdf.worker.mjs';
+        
+        console.log('✅ PDF.js loaded successfully');
     } catch (error) {
         console.error('❌ Failed to load PDF.js:', error);
     }
 }
 
-// PDF text extraction function
+// UPDATED: PDF text extraction function with working API
 async function extractPDFText(file) {
     if (!pdfjsLib) {
         throw new Error('PDF.js not loaded');
@@ -53,15 +50,23 @@ async function extractPDFText(file) {
     
     try {
         const arrayBuffer = await file.arrayBuffer();
+        
+        // FIXED: Use correct API with .promise
         const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
         let fullText = '';
         
         console.log(`📄 Processing PDF: ${file.name} (${pdf.numPages} pages)`);
         
-        for (let i = 1; i <= pdf.numPages; i++) {
-            const page = await pdf.getPage(i);
+        // Process each page
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+            const page = await pdf.getPage(pageNum);
             const textContent = await page.getTextContent();
-            const pageText = textContent.items.map(item => item.str).join(' ');
+            
+            // Extract text from items array
+            const pageText = textContent.items
+                .map(item => item.str)
+                .join(' ');
+            
             fullText += pageText + '\n\n';
         }
         
@@ -622,9 +627,9 @@ const systemPrompts = {
     'interview-supportive-developer': 'Focus on potential and growth mindset over perfect answers. Ask about learning experiences, how they handle failure, what they want to develop. Probe for curiosity, adaptability, and genuine enthusiasm for growth using supportive but thorough questioning techniques. Build on their examples positively while still challenging them. Keep responses to 1-2 sentences maximum.'
 };
 
-// Initialize the application (modified for Firebase and PDF.js)
+// UPDATED: Initialize the application with working PDF.js
 document.addEventListener('DOMContentLoaded', function() {
-    initializePDFJS(); // NEW: Initialize PDF.js
+    initializePDFJS(); // Initialize with working PDF.js
     initializeVoiceRecognition();
     setupEventListeners();
     
@@ -858,7 +863,7 @@ function loadTraitSliders() {
     });
 }
 
-// UPDATED: Enhanced file upload with PDF text extraction
+// UPDATED: Enhanced file upload with working PDF text extraction
 async function handleFileUpload(event, type) {
     const files = Array.from(event.target.files);
     
@@ -875,7 +880,7 @@ async function handleFileUpload(event, type) {
     }
 }
 
-// NEW: Extract text from uploaded files
+// UPDATED: Extract text from uploaded files with working PDF.js
 async function extractTextsFromFiles(files, type) {
     const container = document.getElementById(`${type}-files`);
     if (!container) return;
