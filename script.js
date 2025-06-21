@@ -2,7 +2,7 @@
 let currentUser = null;
 let sessionRating = 0;
 
-// Global state variables
+// Global state variables (your existing code)
 let currentPage = 1;
 let selectedScenario = '';
 let selectedPersona = '';
@@ -12,85 +12,39 @@ let companyContext = '';
 let policyFiles = [];
 let briefingFiles = [];
 let traitValues = {};
+// API keys are now securely stored on Vercel - no longer needed here
 
-// Conversation memory
+// NEW: Top lines tracking
+let topLines = [];
+let topLinesTracking = {};
+
+// NEW: Conversation memory
 let conversationHistory = [];
 let isRecording = false;
 
 // Voice recognition variables
 let recognition = null;
 let speechSynthesis = window.speechSynthesis;
-let useElevenLabs = true;
+let useElevenLabs = true; // Flag to track if we should use ElevenLabs
 
-// Session timer variables
-let sessionStartTime = null;
-let sessionTimer = null;
-
-// DOM Ready Flag
-let isDOMReady = false;
-
-// Wait for DOM to be ready
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('✅ DOM is ready!');
-    isDOMReady = true;
-    
-    // Initialize everything
-    initializeApp();
-});
-
-// Initialize Firebase Auth AFTER DOM is ready
-function initializeApp() {
-    // Initialize voice recognition
-    initializeVoiceRecognition();
-    
-    // Setup event listeners
-    setupEventListeners();
-    
-    // Load voices for TTS
-    if ('speechSynthesis' in window) {
-        const logVoices = () => {
-            const voices = speechSynthesis.getVoices();
-            console.log(`Loaded ${voices.length} TTS voices`);
-            const britishVoices = voices.filter(v => v.lang.includes('GB'));
-            console.log(`Found ${britishVoices.length} British voices:`, britishVoices.map(v => v.name));
-        };
-        
-        speechSynthesis.addEventListener('voiceschanged', logVoices);
-        speechSynthesis.getVoices();
-        setTimeout(() => speechSynthesis.getVoices(), 100);
+// Firebase Authentication Functions
+auth.onAuthStateChanged(function(user) {
+    console.log('🔥 Auth state changed:', user ? 'LOGGED IN' : 'LOGGED OUT');
+    if (user) {
+        currentUser = user;
+        console.log('✅ User logged in:', user.email);
+        showLoggedInState();
+        // Only redirect to page 1 if we're on the login page
+        if (document.getElementById('login-page').classList.contains('active')) {
+            console.log('📱 Redirecting to main app...');
+            goToPage(1);
+        }
+    } else {
+        currentUser = null;
+        console.log('❌ User logged out');
+        showLoginPage();
     }
-    
-    // NOW set up Firebase auth listener
-    auth.onAuthStateChanged(function(user) {
-        console.log('🔥 Auth state changed:', user ? 'LOGGED IN' : 'LOGGED OUT');
-        
-        // Make sure DOM is ready before doing anything
-        if (!isDOMReady) {
-            console.log('⏳ Waiting for DOM...');
-            setTimeout(() => auth.onAuthStateChanged(arguments.callee), 100);
-            return;
-        }
-        
-        if (user) {
-            currentUser = user;
-            console.log('✅ User logged in:', user.email);
-            showLoggedInState();
-            
-            // Check if we're on login page
-            const loginPage = document.getElementById('login-page');
-            if (loginPage && loginPage.style.display !== 'none') {
-                console.log('📱 Redirecting to main app...');
-                goToPage(1);
-            }
-        } else {
-            currentUser = null;
-            console.log('❌ User logged out');
-            showLoginPage();
-        }
-    });
-    
-    console.log('🔥 App initialization complete');
-}
+});
 
 function checkFormFields() {
     const email = document.getElementById('email').value.trim();
@@ -100,6 +54,7 @@ function checkFormFields() {
     const signupBtn = document.getElementById('signup-btn');
     
     if (email && password && password.length >= 6) {
+        // Enable buttons
         signinBtn.disabled = false;
         signupBtn.disabled = false;
         signinBtn.style.opacity = '1';
@@ -107,6 +62,7 @@ function checkFormFields() {
         signinBtn.style.cursor = 'pointer';
         signupBtn.style.cursor = 'pointer';
     } else {
+        // Disable buttons
         signinBtn.disabled = true;
         signupBtn.disabled = true;
         signinBtn.style.opacity = '0.5';
@@ -117,79 +73,32 @@ function checkFormFields() {
 }
 
 function showLoginPage() {
-    console.log('🔄 Showing login page...');
-    
     // Hide all pages
-    const pages = document.querySelectorAll('.page');
-    pages.forEach(page => {
-        if (page) page.style.display = 'none';
+    document.querySelectorAll('.page').forEach(page => {
+        page.classList.remove('active');
     });
-    
     // Show login page
-    const loginPage = document.getElementById('login-page');
-    if (loginPage) {
-        loginPage.style.display = 'block';
-    } else {
-        console.error('❌ Login page not found!');
-    }
-    
-    // Hide navigation elements
-    const logoutLink = document.getElementById('logout-link');
-    if (logoutLink) logoutLink.style.display = 'none';
-    
-    const historyLink = document.getElementById('history-link');
-    if (historyLink) historyLink.style.display = 'none';
-    
-    // Hide step indicator
-    const stepIndicator = document.getElementById('step-indicator');
-    if (stepIndicator) stepIndicator.style.display = 'none';
+    document.getElementById('login-page').classList.add('active');
+    // Hide logout link
+    document.getElementById('logout-link').style.display = 'none';
 }
 
 function showLoggedInState() {
-    console.log('🔄 Showing logged in state...');
-    
-    // Show navigation elements
-    const logoutLink = document.getElementById('logout-link');
-    if (logoutLink) {
-        logoutLink.style.display = 'block';
-    } else {
-        console.warn('⚠️ Logout link not found');
-    }
-    
-    const historyLink = document.getElementById('history-link');
-    if (historyLink) {
-        historyLink.style.display = 'block';
-    } else {
-        console.warn('⚠️ History link not found');
-    }
+    // Show logout link
+    document.getElementById('logout-link').style.display = 'block';
 }
 
 function signInWithGoogle() {
-    console.log('🔵 Attempting Google sign-in...');
     showAuthMessage('Signing in with Google...', 'success');
-    
     auth.signInWithPopup(googleProvider)
         .then((result) => {
-            console.log('✅ Google sign-in successful:', result);
+            console.log('Google sign-in successful');
             showAuthMessage('Welcome! Redirecting to training...', 'success');
+            // User will be automatically redirected by onAuthStateChanged
         })
         .catch((error) => {
-            console.error('❌ Google sign-in error:', error);
-            console.error('Error code:', error.code);
-            console.error('Error message:', error.message);
-            
-            // More specific error messages
-            if (error.code === 'auth/popup-blocked') {
-                showAuthError('Please allow popups for this site to sign in with Google');
-            } else if (error.code === 'auth/cancelled-popup-request') {
-                showAuthError('Sign-in cancelled. Please try again.');
-            } else if (error.code === 'auth/popup-closed-by-user') {
-                showAuthError('Sign-in window was closed. Please try again.');
-            } else if (error.code === 'auth/unauthorized-domain') {
-                showAuthError('This domain is not authorized for Google sign-in. Please check Firebase console.');
-            } else {
-                showAuthError(error.message || 'Google sign-in failed. Please try again.');
-            }
+            console.error('Google sign-in error:', error);
+            showAuthError(error.message);
         });
 }
 
@@ -197,23 +106,20 @@ function signInWithEmail() {
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value.trim();
     
-    console.log('📧 Attempting email sign-in for:', email);
-    
     if (!email || !password) {
         showAuthError('Please enter both email and password to sign in');
         return;
     }
     
     showAuthMessage('Signing in...', 'success');
-    
     auth.signInWithEmailAndPassword(email, password)
         .then((result) => {
-            console.log('✅ Email sign-in successful:', result);
+            console.log('Email sign-in successful');
             showAuthMessage('Welcome back! Redirecting...', 'success');
+            // User will be automatically redirected by onAuthStateChanged
         })
         .catch((error) => {
-            console.error('❌ Email sign-in error:', error);
-            console.error('Error code:', error.code);
+            console.error('Email sign-in error:', error);
             showAuthError(getErrorMessage(error.code));
         });
 }
@@ -237,6 +143,7 @@ function signUpWithEmail() {
         .then((result) => {
             console.log('Account created successfully');
             showAuthMessage('Account created! Welcome to Training Pro!', 'success');
+            // User will be automatically redirected by onAuthStateChanged
         })
         .catch((error) => {
             console.error('Sign-up error:', error);
@@ -248,7 +155,9 @@ function signOut() {
     if (confirm('Are you sure you want to sign out?')) {
         auth.signOut().then(() => {
             console.log('User signed out');
+            // Reset application state
             resetApplicationState();
+            // User will be automatically redirected to login by onAuthStateChanged
         });
     }
 }
@@ -256,28 +165,24 @@ function signOut() {
 function showAuthError(message) {
     const errorDiv = document.getElementById('auth-error');
     const successDiv = document.getElementById('auth-success');
-    if (successDiv) successDiv.style.display = 'none';
-    if (errorDiv) {
-        errorDiv.textContent = message;
-        errorDiv.style.display = 'block';
-        setTimeout(() => {
-            errorDiv.style.display = 'none';
-        }, 5000);
-    }
+    successDiv.style.display = 'none';
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+    setTimeout(() => {
+        errorDiv.style.display = 'none';
+    }, 5000);
 }
 
 function showAuthMessage(message, type) {
     const errorDiv = document.getElementById('auth-error');
     const successDiv = document.getElementById('auth-success');
-    if (errorDiv) errorDiv.style.display = 'none';
-    if (successDiv) {
-        successDiv.textContent = message;
-        successDiv.style.display = 'block';
-        if (type === 'success') {
-            setTimeout(() => {
-                successDiv.style.display = 'none';
-            }, 3000);
-        }
+    errorDiv.style.display = 'none';
+    successDiv.textContent = message;
+    successDiv.style.display = 'block';
+    if (type === 'success') {
+        setTimeout(() => {
+            successDiv.style.display = 'none';
+        }, 3000);
     }
 }
 
@@ -287,8 +192,6 @@ function getErrorMessage(errorCode) {
             return 'No account found with this email address.';
         case 'auth/wrong-password':
             return 'Incorrect password.';
-        case 'auth/invalid-credential':
-            return 'Invalid email or password. Please check and try again.';
         case 'auth/email-already-in-use':
             return 'An account with this email already exists.';
         case 'auth/weak-password':
@@ -314,10 +217,11 @@ function resetApplicationState() {
     traitValues = {};
     conversationHistory = [];
     isRecording = false;
-    useElevenLabs = true;
-    sessionRating = 0;
-    stopSessionTimer();
+    useElevenLabs = true; // Reset voice preference
+    topLines = []; // Reset top lines
+    topLinesTracking = {}; // Reset tracking
     
+    // Reset UI
     document.body.className = '';
     document.querySelectorAll('.scenario-card').forEach(card => {
         card.classList.remove('active');
@@ -326,142 +230,231 @@ function resetApplicationState() {
         btn.classList.remove('active');
     });
     
+    // Clear form fields
     const fields = ['scenario-description', 'your-role', 'company-context', 'email', 'password'];
     fields.forEach(fieldId => {
         const field = document.getElementById(fieldId);
         if (field) field.value = '';
     });
+    
+    // Reset top lines container
+    const topLinesContainer = document.getElementById('top-lines-container');
+    if (topLinesContainer) {
+        topLinesContainer.innerHTML = `
+            <div class="top-line-input">
+                <input type="text" class="top-line" placeholder="Key message 1" maxlength="150">
+            </div>
+        `;
+    }
 }
 
-// Feedback System Functions
-function setRating(rating) {
-    sessionRating = rating;
-    const stars = document.querySelectorAll('.star');
-    stars.forEach((star, index) => {
-        if (index < rating) {
-            star.style.color = '#ffc107';
-        } else {
-            star.style.color = '#ddd';
+// NEW: Add top line input field
+function addTopLine() {
+    const container = document.getElementById('top-lines-container');
+    const currentLines = container.querySelectorAll('.top-line').length;
+    
+    if (currentLines >= 5) {
+        alert('Maximum 5 key messages allowed');
+        return;
+    }
+    
+    const newLineDiv = document.createElement('div');
+    newLineDiv.className = 'top-line-input';
+    newLineDiv.innerHTML = `
+        <input type="text" class="top-line" placeholder="Key message ${currentLines + 1}" maxlength="150">
+        <button onclick="removeTopLine(this)" style="margin-left: 0.5rem; padding: 0.5rem; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">✕</button>
+    `;
+    container.appendChild(newLineDiv);
+}
+
+// NEW: Remove top line input field
+function removeTopLine(button) {
+    button.parentElement.remove();
+    // Update placeholders
+    const inputs = document.querySelectorAll('.top-line');
+    inputs.forEach((input, index) => {
+        input.placeholder = `Key message ${index + 1}`;
+    });
+}
+
+// NEW: Collect top lines when starting training
+function collectTopLines() {
+    topLines = [];
+    topLinesTracking = {};
+    
+    const inputs = document.querySelectorAll('.top-line');
+    inputs.forEach(input => {
+        const value = input.value.trim();
+        if (value) {
+            topLines.push(value);
+            // Initialize tracking for each top line
+            topLinesTracking[value] = {
+                mentioned: false,
+                context: '',
+                timing: 'not_mentioned',
+                effectiveness: 0
+            };
         }
     });
 }
 
-function submitFeedback() {
-    const feedback = document.getElementById('feedback-text').value.trim();
+// NEW: AI-powered feedback analysis
+async function generateAIFeedback() {
+    const feedbackContent = document.getElementById('ai-feedback-content');
     
-    if (sessionRating === 0) {
-        alert('Please rate your session before submitting feedback.');
-        return;
-    }
+    if (!feedbackContent) return;
     
-    console.log('💾 Submitting feedback...');
-    
-    // Save to Firestore if user is logged in
-    if (currentUser) {
-        const sessionData = {
-            userId: currentUser.uid,
-            userEmail: currentUser.email,
-            scenario: selectedScenario,
-            persona: selectedPersona,
-            rating: sessionRating,
-            feedback: feedback,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            sessionDuration: conversationHistory.length,
-            userRole: userRole,
-            scenarioDescription: scenarioDescription,
-            conversationCount: conversationHistory.filter(h => h.role === 'user').length
-        };
-        
-        db.collection('trainingSessions').add(sessionData)
-            .then((docRef) => {
-                console.log('✅ Session saved with ID:', docRef.id);
-                showFeedbackSuccessAndRedirect();
-            })
-            .catch((error) => {
-                console.error('⚠️ Error saving session:', error);
-                // Still show success to user
-                showFeedbackSuccessAndRedirect();
-            });
-    } else {
-        // No user logged in, just redirect
-        showFeedbackSuccessAndRedirect();
-    }
-}
-
-// New function to handle success message and redirect
-function showFeedbackSuccessAndRedirect() {
-    console.log('🎉 Showing success message...');
-    
-    // Create and show success message
-    const feedbackPage = document.getElementById('feedback-page');
-    if (!feedbackPage) {
-        console.error('❌ Feedback page not found for success message');
-        resetAndGoHome();
-        return;
-    }
-    
-    // Remove any existing success messages
-    const existingSuccess = document.querySelector('.feedback-success-message');
-    if (existingSuccess) {
-        existingSuccess.remove();
-    }
-    
-    const successMessage = document.createElement('div');
-    successMessage.className = 'feedback-success-message';
-    successMessage.style.cssText = `
-        background: #28a745;
-        color: white;
-        padding: 1rem 2rem;
-        border-radius: 10px;
-        text-align: center;
-        margin: 1rem auto;
-        max-width: 500px;
-        font-weight: 600;
-        animation: slideIn 0.3s ease;
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 1000;
+    // Show loading state
+    feedbackContent.innerHTML = `
+        <div style="text-align: center; padding: 2rem;">
+            <div class="loading-spinner"></div>
+            <p>Analyzing your performance...</p>
+        </div>
     `;
-    successMessage.textContent = 'Excellent work! Your feedback has been saved. Redirecting...';
     
-    document.body.appendChild(successMessage);
-    
-    // Wait 2 seconds then redirect
-    setTimeout(() => {
-        console.log('🔄 Redirecting to home...');
-        successMessage.remove();
-        resetAndGoHome();
-    }, 2000);
+    try {
+        // Prepare analysis request
+        const analysisPrompt = `
+Analyze this training session conversation and provide detailed feedback:
+
+Role: ${userRole}
+Scenario: ${selectedScenario}
+Key Messages to Land: ${topLines.join(', ')}
+
+Conversation:
+${conversationHistory.map(entry => `${entry.role.toUpperCase()}: ${entry.content}`).join('\n')}
+
+Provide analysis in these areas:
+1. Key Message Delivery - Did they land their key messages effectively? Were they mentioned naturally or forced?
+2. Response Quality - Were answers clear, concise, and on-topic?
+3. Confidence & Authority - Did they sound authoritative and confident?
+4. Handling Difficult Questions - How well did they manage challenging moments?
+5. Areas for Improvement - Specific actionable feedback
+
+Format the response as structured feedback with scores out of 10 for each area.
+Be specific about which key messages were landed well and which were missed.
+`;
+
+        // Call OpenAI API for analysis
+        const response = await fetch('/api/openai', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'gpt-4',
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'You are an expert communications coach analyzing training session performance. Provide constructive, specific feedback that helps people improve their professional communication skills.'
+                    },
+                    {
+                        role: 'user',
+                        content: analysisPrompt
+                    }
+                ],
+                max_tokens: 800,
+                temperature: 0.7
+            })
+        });
+        
+        const data = await response.json();
+        const analysis = data.choices[0].message.content;
+        
+        // Parse the analysis and create visual feedback
+        displayFormattedFeedback(analysis);
+        
+    } catch (error) {
+        console.error('Error generating AI feedback:', error);
+        feedbackContent.innerHTML = `
+            <div style="background: #f8d7da; padding: 1rem; border-radius: 8px; color: #721c24;">
+                <p>Unable to generate AI feedback. Please try again.</p>
+            </div>
+        `;
+    }
 }
 
-// New function to reset and go home
-function resetAndGoHome() {
-    console.log('🏠 Going home...');
+// NEW: Display formatted AI feedback
+function displayFormattedFeedback(analysis) {
+    const feedbackContent = document.getElementById('ai-feedback-content');
     
-    // Reset session data
-    resetForNewSession();
+    // Create a visually appealing feedback display
+    let feedbackHTML = `
+        <div style="background: white; padding: 2rem; border-radius: 10px; margin-bottom: 1.5rem;">
+            <h4 style="color: #667eea; margin-bottom: 1rem;">🎯 Key Messages Performance</h4>
+            <div style="margin-bottom: 1.5rem;">
+    `;
     
-    // Hide feedback page
-    const feedbackPage = document.getElementById('feedback-page');
-    if (feedbackPage) {
-        feedbackPage.style.display = 'none';
-    }
+    // Analyze which top lines were mentioned
+    topLines.forEach((line, index) => {
+        const wasMentioned = conversationHistory.some(entry => 
+            entry.role === 'user' && entry.content.toLowerCase().includes(line.toLowerCase().substring(0, 20))
+        );
+        
+        feedbackHTML += `
+            <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                <span style="font-size: 1.2rem; margin-right: 0.5rem;">
+                    ${wasMentioned ? '✅' : '❌'}
+                </span>
+                <span style="flex: 1;">${line}</span>
+                <span style="font-size: 0.9rem; color: ${wasMentioned ? '#28a745' : '#dc3545'};">
+                    ${wasMentioned ? 'Delivered' : 'Missed'}
+                </span>
+            </div>
+        `;
+    });
     
-    // Show step indicator
-    const stepIndicator = document.getElementById('step-indicator');
-    if (stepIndicator) {
-        stepIndicator.style.display = 'flex';
-    }
+    feedbackHTML += `
+            </div>
+        </div>
+        
+        <div style="background: white; padding: 2rem; border-radius: 10px;">
+            <h4 style="color: #667eea; margin-bottom: 1rem;">📊 Detailed Analysis</h4>
+            <div style="white-space: pre-wrap; line-height: 1.6;">
+                ${analysis}
+            </div>
+        </div>
+        
+        <div style="background: #e7f3ff; padding: 1.5rem; border-radius: 10px; margin-top: 1.5rem;">
+            <h4>💡 Quick Tips for Next Time</h4>
+            <ul style="margin-top: 1rem;">
+                ${topLines.filter((line, index) => {
+                    const wasMentioned = conversationHistory.some(entry => 
+                        entry.role === 'user' && entry.content.toLowerCase().includes(line.toLowerCase().substring(0, 20))
+                    );
+                    return !wasMentioned;
+                }).map(line => `
+                    <li>Find opportunities to naturally mention: "${line}"</li>
+                `).join('')}
+                <li>Practice bridging from difficult questions back to your key messages</li>
+                <li>Use examples and evidence to support your points</li>
+            </ul>
+        </div>
+    `;
     
-    // Go to page 1
-    goToPage(1);
-    
-    console.log('✅ Reset complete, now on page 1');
+    feedbackContent.innerHTML = feedbackHTML;
 }
 
+// Modified endTraining function
+function endTraining() {
+    if (confirm('Are you sure you want to end this training session?')) {
+        // Collect top lines for analysis
+        collectTopLines();
+        
+        // Go to feedback page
+        document.querySelectorAll('.page').forEach(page => {
+            page.classList.remove('active');
+        });
+        document.getElementById('feedback-page').classList.add('active');
+        
+        // Generate AI feedback
+        generateAIFeedback();
+    }
+}
+
+// Simplified resetForNewSession (no Firebase saving)
 function resetForNewSession() {
+    // Reset session-specific data but keep user logged in
     selectedScenario = '';
     selectedPersona = '';
     scenarioDescription = '';
@@ -472,8 +465,10 @@ function resetForNewSession() {
     traitValues = {};
     conversationHistory = [];
     sessionRating = 0;
-    stopSessionTimer();
+    topLines = [];
+    topLinesTracking = {};
     
+    // Reset voice settings
     useElevenLabs = true;
     const indicator = document.getElementById('voice-status-indicator');
     if (indicator) {
@@ -481,6 +476,7 @@ function resetForNewSession() {
         indicator.style.background = '#28a745';
     }
     
+    // Reset UI elements
     document.body.className = '';
     document.querySelectorAll('.scenario-card').forEach(card => {
         card.classList.remove('active');
@@ -489,23 +485,37 @@ function resetForNewSession() {
         btn.classList.remove('active');
     });
     
-    const fields = ['scenario-description', 'your-role', 'company-context', 'feedback-text'];
+    // Clear form fields except login
+    const fields = ['scenario-description', 'your-role', 'company-context'];
     fields.forEach(fieldId => {
         const field = document.getElementById(fieldId);
         if (field) field.value = '';
     });
     
+    // Reset top lines container
+    const topLinesContainer = document.getElementById('top-lines-container');
+    if (topLinesContainer) {
+        topLinesContainer.innerHTML = `
+            <div class="top-line-input">
+                <input type="text" class="top-line" placeholder="Key message 1" maxlength="150">
+            </div>
+        `;
+    }
+    
+    // Reset buttons
     const nextBtn2 = document.getElementById('next-to-page-2');
     const nextBtn4 = document.getElementById('next-to-page-4');
     if (nextBtn2) nextBtn2.disabled = true;
     if (nextBtn4) nextBtn4.disabled = true;
     
+    // Clear file uploads
     const fileContainers = ['policy-files', 'briefing-files'];
     fileContainers.forEach(containerId => {
         const container = document.getElementById(containerId);
         if (container) container.innerHTML = '';
     });
     
+    // Clear chat
     const messagesContainer = document.getElementById('chat-messages');
     if (messagesContainer) {
         messagesContainer.innerHTML = `
@@ -514,128 +524,9 @@ function resetForNewSession() {
             </div>
         `;
     }
-    
-    // Reset star ratings
-    const stars = document.querySelectorAll('.star');
-    stars.forEach(star => {
-        star.style.color = '#ddd';
-    });
 }
 
-// Session Timer Functions
-function startSessionTimer() {
-    sessionStartTime = Date.now();
-    updateSessionTimer();
-    sessionTimer = setInterval(updateSessionTimer, 1000);
-}
-
-function updateSessionTimer() {
-    if (!sessionStartTime) return;
-    
-    const elapsed = Math.floor((Date.now() - sessionStartTime) / 1000);
-    const minutes = Math.floor(elapsed / 60);
-    const seconds = elapsed % 60;
-    
-    const timerDisplay = document.getElementById('session-timer');
-    if (timerDisplay) {
-        timerDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    }
-}
-
-function stopSessionTimer() {
-    if (sessionTimer) {
-        clearInterval(sessionTimer);
-        sessionTimer = null;
-    }
-    sessionStartTime = null;
-}
-
-// Auto-save progress function
-function autoSaveProgress() {
-    if (currentUser && conversationHistory.length > 0) {
-        const progressData = {
-            userId: currentUser.uid,
-            scenario: selectedScenario,
-            persona: selectedPersona,
-            conversationHistory: conversationHistory,
-            lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
-            status: 'in-progress'
-        };
-        
-        const sessionId = `${currentUser.uid}_${Date.now()}`;
-        db.collection('sessionsInProgress').doc(sessionId).set(progressData)
-            .then(() => console.log('Progress auto-saved'))
-            .catch(err => console.error('Auto-save failed:', err));
-    }
-}
-
-// History page functions
-function showHistory() {
-    // Hide all pages
-    const pages = document.querySelectorAll('.page');
-    pages.forEach(page => {
-        if (page) page.style.display = 'none';
-    });
-    
-    // Show history page
-    const historyPage = document.getElementById('history-page');
-    if (historyPage) {
-        historyPage.style.display = 'block';
-    }
-    
-    const stepIndicator = document.getElementById('step-indicator');
-    if (stepIndicator) {
-        stepIndicator.style.display = 'none';
-    }
-    
-    loadTrainingHistory();
-}
-
-async function loadTrainingHistory() {
-    if (!currentUser) return;
-    
-    const container = document.getElementById('history-container');
-    if (!container) return;
-    
-    container.innerHTML = '<p>Loading your sessions...</p>';
-    
-    try {
-        const sessions = await db.collection('trainingSessions')
-            .where('userId', '==', currentUser.uid)
-            .orderBy('timestamp', 'desc')
-            .limit(10)
-            .get();
-        
-        if (sessions.empty) {
-            container.innerHTML = '<p>No previous training sessions found.</p>';
-            return;
-        }
-        
-        let html = '<div class="sessions-list">';
-        sessions.forEach(doc => {
-            const data = doc.data();
-            const date = data.timestamp ? data.timestamp.toDate().toLocaleDateString() : 'Unknown date';
-            
-            html += `
-                <div class="session-card" style="background: #f8f9fa; padding: 1.5rem; border-radius: 10px; margin-bottom: 1rem;">
-                    <h4>${data.scenario || 'Unknown'} - ${data.persona || 'Unknown'}</h4>
-                    <p>Role: ${data.userRole || 'Not specified'}</p>
-                    <p>Date: ${date}</p>
-                    <p>Rating: ${'⭐'.repeat(data.rating || 0)}</p>
-                    <p>Messages exchanged: ${data.conversationCount || 0}</p>
-                </div>
-            `;
-        });
-        html += '</div>';
-        
-        container.innerHTML = html;
-    } catch (error) {
-        console.error('Error loading history:', error);
-        container.innerHTML = '<p>Error loading session history.</p>';
-    }
-}
-
-// Trait definitions
+// Your existing trait definitions and personas (keep exactly the same)
 const traitDefinitions = {
     committee: {
         aggressiveness: {
@@ -743,7 +634,7 @@ const traitDefinitions = {
     }
 };
 
-// Personas for each scenario
+// Updated Personas for each scenario type (keep exactly the same)
 const personas = {
     committee: [
         {
@@ -825,14 +716,16 @@ const personas = {
     ]
 };
 
-// System prompts
+// CORRECTED System prompts with proper key mapping (keep exactly the same)
 const systemPrompts = {
+    // COMMITTEE PERSONAS - Keys must match exactly with persona IDs
     'committee-forensic-chair': 'Channel the select committee chair style of figures like Yvette Cooper or Hilary Benn - methodical, evidence-based questioning that builds cases systematically. Reference previous witness testimony, maintain formal parliamentary courtesy but be relentless in pursuing facts. Use the questioning approach seen in Hansard transcripts - start with context-setting, then drill down systematically. Remember everything they\'ve said and build your case witness by witness. Keep responses to 1-2 sentences maximum.',
     
     'committee-backbench-terrier': 'Embody the style of persistent backbench MPs like those who made their reputation holding power to account in select committees. You have no ministerial ambitions - just a burning need for truth. Apply the approach seen in parliamentary questioning where MPs circle back to unanswered questions multiple ways until getting real answers. You\'re not impressed by titles or evasions - you represent ordinary constituents who deserve straight answers. Keep responses to 1-2 sentences maximum.',
     
     'committee-technical-specialist': 'Channel the approach of subject-matter expert MPs who sit on specialist committees - those with genuine expertise in policy areas. You know the legislation inside out, previous consultations, international comparisons. Use the technically precise questioning style seen in select committee transcripts that reveals whether witnesses really understand their brief. Catch when they misstate facts or dodge technical realities. Keep responses to 1-2 sentences maximum.',
 
+    // MEDIA PERSONAS  
     'media-political-heavyweight': 'Channel the interviewing style of Jeremy Paxman and Andrew Neil - veteran political interviewers known for forensic preparation and refusing to accept evasive answers. You\'ve done your homework like they do - you know voting records, previous statements, contradictions. Apply their approach of circling back to unanswered questions and not being deflected by political spin. You represent viewers who want straight answers, using their confrontational but professional style. Keep responses to 1-2 sentences maximum.',
     
     'media-time-pressure-broadcaster': 'Use the radio interviewing style of John Humphrys and Nick Robinson on Radio 4 Today programme - fast-paced with tight time constraints and broad audience appeal. Apply their technique of cutting through jargon, pressing for simple explanations, and moving quickly between topics. Channel their approach of making complex issues accessible to ordinary listeners with time pressure and urgency. Keep responses to 1-2 sentences maximum.',
@@ -841,12 +734,14 @@ const systemPrompts = {
     
     'media-sympathetic-professional': 'Use the interviewing approach of Emily Maitlis or Martha Kearney - respected broadcasters known for fair but thorough interviews. Give people space to explain complex issues like they do, while still asking tough questions when needed. Channel their style of being genuinely interested in understanding perspectives while maintaining journalistic integrity and public interest. Keep responses to 1-2 sentences maximum.',
 
+    // CONSULTATION PERSONAS
     'consultation-concerned-local': 'You are a local resident whose life will be directly affected by this decision. You\'re not a policy expert - you\'re a real person with real concerns about your community, your family, your daily life. Ask emotional, practical questions about what this actually means for ordinary people like you. Stay grounded in personal impact, not policy theory. Remember their previous answers and hold them to commitments. Keep responses to 1-2 sentences maximum.',
     
     'consultation-business-voice': 'You are a local business owner trying to understand what this policy means for your livelihood. Think in practical terms - costs, compliance, timelines, paperwork. You\'re not hostile to progress but need to understand real-world implementation and economic impacts on small businesses like yours. Reference their previous statements about costs and timelines. Keep responses to 1-2 sentences maximum.',
     
     'consultation-informed-activist': 'You are a community activist who\'s done homework on this issue. You understand policy detail but approach from values-based perspective - social justice, environmental impact, community equity. Challenge officials to consider broader implications beyond their narrow brief, drawing on activist questioning techniques. Remember their commitments and challenge inconsistencies. Keep responses to 1-2 sentences maximum.',
 
+    // INTERVIEW PERSONAS
     'interview-senior-stakeholder': 'You are a senior executive evaluating whether this person can operate at the level required. Ask about strategic thinking, leadership examples, how they handle pressure and ambiguity. Assess cultural fit and whether they can represent the organization externally. Use executive-level questioning approach. Build on their previous answers to assess consistency. Keep responses to 1-2 sentences maximum.',
     
     'interview-technical-evaluator': 'You are a technical expert evaluating actual competency, not just resume claims. Ask specific technical questions, present scenarios, test problem-solving in real-time. Distinguish between theoretical knowledge and practical experience through hands-on technical assessment. Reference their previous technical claims and build complexity. Keep responses to 1-2 sentences maximum.',
@@ -856,21 +751,32 @@ const systemPrompts = {
     'interview-supportive-developer': 'Focus on potential and growth mindset over perfect answers. Ask about learning experiences, how they handle failure, what they want to develop. Probe for curiosity, adaptability, and genuine enthusiasm for growth using supportive but thorough questioning techniques. Build on their examples positively while still challenging them. Keep responses to 1-2 sentences maximum.'
 };
 
-// Keyboard shortcuts
-document.addEventListener('keydown', function(e) {
-    if (currentPage !== 5) return;
+// Initialize the application (modified for Firebase)
+document.addEventListener('DOMContentLoaded', function() {
+    initializeVoiceRecognition();
+    setupEventListeners();
     
-    if ((e.ctrlKey || e.metaKey) && e.code === 'Space') {
-        e.preventDefault();
-        toggleVoiceRecognition();
+    // Load available voices for fallback TTS
+    if ('speechSynthesis' in window) {
+        // Function to log available voices
+        const logVoices = () => {
+            const voices = speechSynthesis.getVoices();
+            console.log(`Loaded ${voices.length} TTS voices`);
+            const britishVoices = voices.filter(v => v.lang.includes('GB'));
+            console.log(`Found ${britishVoices.length} British voices:`, britishVoices.map(v => v.name));
+        };
+        
+        // Chrome loads voices asynchronously
+        speechSynthesis.addEventListener('voiceschanged', logVoices);
+        // Trigger initial voice load
+        speechSynthesis.getVoices();
+        // Also try loading after a delay
+        setTimeout(() => speechSynthesis.getVoices(), 100);
     }
     
-    if (e.code === 'Escape') {
-        const confirmEnd = confirm('Press OK to end training session');
-        if (confirmEnd) {
-            endTraining();
-        }
-    }
+    // Ensure login page is shown initially
+    console.log('🔥 App loaded - waiting for Firebase auth...');
+    showLoginPage();
 });
 
 function initializeVoiceRecognition() {
@@ -917,6 +823,7 @@ function initializeVoiceRecognition() {
 }
 
 function setupEventListeners() {
+    // Scenario selection
     document.querySelectorAll('.scenario-card').forEach(card => {
         card.addEventListener('click', function() {
             selectScenario(this.dataset.scenario);
@@ -927,58 +834,39 @@ function setupEventListeners() {
 function selectScenario(scenario) {
     selectedScenario = scenario;
     
+    // Update UI
     document.querySelectorAll('.scenario-card').forEach(card => {
         card.classList.remove('active');
     });
     document.querySelector(`[data-scenario="${scenario}"]`).classList.add('active');
     
+    // Apply theme
     document.body.className = `${scenario}-theme`;
     
+    // Enable next button
     const nextBtn = document.getElementById('next-to-page-2');
     if (nextBtn) {
         nextBtn.disabled = false;
     }
     
+    // Update step
     updateStep(1);
 }
 
 function goToPage(pageNumber) {
-    console.log(`📄 Going to page ${pageNumber}`);
-    
-    // Wait for DOM if not ready
-    if (!isDOMReady) {
-        console.log('⏳ DOM not ready, waiting...');
-        setTimeout(() => goToPage(pageNumber), 100);
-        return;
-    }
-    
-    // Hide all pages
-    const pages = document.querySelectorAll('.page');
-    pages.forEach(page => {
-        if (page) page.style.display = 'none';
+    // Hide current page
+    document.querySelectorAll('.page').forEach(page => {
+        page.classList.remove('active');
     });
     
     // Show target page
     const targetPage = document.getElementById(`page-${pageNumber}`);
     if (targetPage) {
-        targetPage.style.display = 'block';
-        console.log(`✅ Showing page ${pageNumber}`);
-    } else {
-        console.error(`❌ Page ${pageNumber} not found!`);
-        return;
+        targetPage.classList.add('active');
     }
-    
-    // Show step indicator for training pages
-    const stepIndicator = document.getElementById('step-indicator');
-    if (stepIndicator) {
-        if (pageNumber >= 1 && pageNumber <= 5) {
-            stepIndicator.style.display = 'flex';
-        } else {
-            stepIndicator.style.display = 'none';
-        }
-    }
-    
     currentPage = pageNumber;
+    
+    // Update step indicator
     updateStep(pageNumber);
     
     // Special handling for specific pages
@@ -988,6 +876,7 @@ function goToPage(pageNumber) {
     } else if (pageNumber === 4) {
         updateSummary();
     } else if (pageNumber === 5) {
+        // Set up voice button listener when we reach training page
         const voiceBtn = document.getElementById('voice-toggle');
         if (voiceBtn && !voiceBtn.hasAttribute('data-listener')) {
             voiceBtn.addEventListener('click', toggleVoiceRecognition);
@@ -1052,6 +941,7 @@ function loadPersonas() {
 function selectPersona(persona) {
     selectedPersona = persona;
     
+    // Update UI
     document.querySelectorAll('.persona-btn').forEach(btn => {
         btn.classList.remove('active');
     });
@@ -1060,12 +950,14 @@ function selectPersona(persona) {
         activeBtn.classList.add('active');
     }
     
+    // Show trait sliders
     const traitSliders = document.getElementById('trait-sliders');
     if (traitSliders) {
         traitSliders.style.display = 'block';
         loadTraitSliders();
     }
     
+    // Enable next button
     const nextBtn = document.getElementById('next-to-page-4');
     if (nextBtn) {
         nextBtn.disabled = false;
@@ -1083,7 +975,7 @@ function loadTraitSliders() {
     traitValues = {};
     
     Object.entries(traits).forEach(([key, trait]) => {
-        traitValues[key] = 5;
+        traitValues[key] = 5; // Default value
         
         const sliderGroup = document.createElement('div');
         sliderGroup.className = 'slider-group';
@@ -1149,6 +1041,7 @@ function updateSummary() {
     const summaryScenario = document.getElementById('summary-scenario');
     const summaryRole = document.getElementById('summary-role');
     const summaryPersona = document.getElementById('summary-persona');
+    const summaryTopLines = document.getElementById('summary-top-lines');
     
     if (summaryScenario) {
         summaryScenario.textContent = scenarioNames[selectedScenario] || selectedScenario;
@@ -1163,8 +1056,21 @@ function updateSummary() {
         const personaData = personas[selectedScenario]?.find(p => p.id === selectedPersona);
         summaryPersona.textContent = personaData?.name || 'Not selected';
     }
+    
+    // Display top lines summary
+    if (summaryTopLines) {
+        const topLineInputs = document.querySelectorAll('.top-line');
+        const lines = [];
+        topLineInputs.forEach(input => {
+            if (input.value.trim()) {
+                lines.push(input.value.trim());
+            }
+        });
+        summaryTopLines.textContent = lines.length > 0 ? lines.join(', ') : 'None specified';
+    }
 }
 
+// NEW: Enhanced voice control (click to start/stop)
 function toggleVoiceRecognition() {
     if (!recognition) {
         alert('Voice recognition not supported in this browser');
@@ -1172,11 +1078,13 @@ function toggleVoiceRecognition() {
     }
     
     if (isRecording) {
+        // Stop recording
         recognition.stop();
         isRecording = false;
         updateVoiceButton('idle');
         updateVoiceStatus('ready', 'Ready for voice input');
     } else {
+        // Start recording
         recognition.start();
         isRecording = true;
         updateVoiceButton('recording');
@@ -1213,6 +1121,7 @@ function updateVoiceStatus(status, message) {
 }
 
 function startTraining() {
+    // Capture all form data
     const descInput = document.getElementById('scenario-description');
     const roleInput = document.getElementById('your-role');
     const contextInput = document.getElementById('company-context');
@@ -1221,13 +1130,21 @@ function startTraining() {
     if (roleInput) userRole = roleInput.value.trim();
     if (contextInput) companyContext = contextInput.value.trim();
     
+    // Collect top lines
+    collectTopLines();
+    
+    // Skip API key modal - keys are embedded
     beginTrainingSession();
 }
 
 function beginTrainingSession() {
+    // Reset conversation history for new session
     conversationHistory = [];
+    
+    // Reset ElevenLabs flag for new session
     useElevenLabs = true;
     
+    // Reset voice indicator
     const indicator = document.getElementById('voice-status-indicator');
     if (indicator) {
         indicator.textContent = '🎤 VOICE ENABLED';
@@ -1236,8 +1153,8 @@ function beginTrainingSession() {
     
     goToPage(5);
     updateStep(5);
-    startSessionTimer();
     
+    // Set up training interface
     const scenarioNames = {
         committee: 'Select Committee',
         media: 'Media Interview',
@@ -1258,6 +1175,7 @@ function beginTrainingSession() {
         personaDescription.textContent = `Interviewer: ${personaData?.name || 'Unknown'}`;
     }
     
+    // Clear previous messages
     const messagesContainer = document.getElementById('chat-messages');
     if (messagesContainer) {
         messagesContainer.innerHTML = `
@@ -1283,6 +1201,7 @@ async function sendMessage() {
     const message = input.value.trim();
     if (!message) return;
     
+    // Add user message to conversation history
     conversationHistory.push({
         role: 'user',
         content: message,
@@ -1292,6 +1211,7 @@ async function sendMessage() {
     addMessage(message, 'user');
     input.value = '';
     
+    // Show typing indicator
     const typingDiv = document.createElement('div');
     typingDiv.className = 'message interviewer';
     typingDiv.innerHTML = '<strong>Interviewer:</strong> <em>typing...</em>';
@@ -1309,6 +1229,7 @@ async function sendMessage() {
             typingElement.remove();
         }
         
+        // Add AI response to conversation history
         conversationHistory.push({
             role: 'interviewer',
             content: response,
@@ -1316,8 +1237,8 @@ async function sendMessage() {
         });
         
         addMessage(response, 'interviewer');
-        autoSaveProgress();
         
+        // Convert response to speech using your secure API
         console.log('🔊 Attempting to speak response:', response.substring(0, 50) + '...');
         await speakResponse(response);
         
@@ -1351,26 +1272,32 @@ function addMessage(message, sender) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
+// Updated AI Response function with top lines tracking
 async function getAIResponse(userMessage) {
+    // Fixed persona mapping with debugging
     const personaKey = `${selectedScenario}-${selectedPersona}`;
     
+    // Debug: Show what we're looking for
     console.log('🔍 Debug Info:');
     console.log('Selected Scenario:', selectedScenario);
     console.log('Selected Persona:', selectedPersona);
     console.log('Looking for key:', personaKey);
     
+    // Get the system prompt with better fallback
     let systemPrompt = systemPrompts[personaKey];
     
     if (!systemPrompt) {
         console.warn('❌ No prompt found for:', personaKey);
         console.log('Available keys:', Object.keys(systemPrompts));
         
+        // Fallback to a basic prompt
         systemPrompt = 'You are a professional interviewer conducting a training session. Ask relevant questions about the scenario and remember their previous answers. Keep responses to 1-2 sentences maximum.';
         console.log('✅ Using fallback prompt');
     } else {
         console.log('✅ Found matching prompt');
     }
     
+    // Build conversation memory context
     let conversationContext = '';
     if (conversationHistory.length > 2) {
         conversationContext = '\n\nPREVIOUS CONVERSATION:\n';
@@ -1384,8 +1311,10 @@ async function getAIResponse(userMessage) {
         conversationContext += '\nREMEMBER: Reference their previous answers. Point out contradictions. Build on what they\'ve said. Be reactive, not generic.\n';
     }
     
+    // Add trait customization
     let traitInstructions = '\n\nCustomized traits for this session:\n';
     
+    // Add scenario context
     let scenarioContext = '';
     if (scenarioDescription) {
         scenarioContext += `\n\nScenario Context: ${scenarioDescription}`;
@@ -1397,6 +1326,13 @@ async function getAIResponse(userMessage) {
         scenarioContext += `\nOrganization: ${companyContext}`;
     }
     
+    // Add top lines context
+    if (topLines.length > 0) {
+        scenarioContext += `\n\nThe user wants to communicate these key messages: ${topLines.join(', ')}`;
+        scenarioContext += '\nOccasionally test whether they can naturally work these messages into their responses.';
+    }
+    
+    // Build trait instructions - simplified to avoid undefined errors
     if (traitValues && typeof traitValues === 'object') {
         Object.entries(traitValues).forEach(([key, value]) => {
             if (value >= 8) {
@@ -1407,6 +1343,7 @@ async function getAIResponse(userMessage) {
         });
     }
     
+    // Add document context
     let contextualInfo = '';
     if (policyFiles.length > 0 || briefingFiles.length > 0) {
         contextualInfo += '\n\nDocument Context:';
@@ -1418,12 +1355,14 @@ async function getAIResponse(userMessage) {
         }
     }
     
+    // Combine all context
     const fullPrompt = systemPrompt + conversationContext + traitInstructions + scenarioContext + contextualInfo + 
         '\n\nIMPORTANT: Keep responses to 1-2 sentences maximum. Be conversational and human. Reference their previous answers. Stay in character.';
     
     console.log('📝 Final prompt preview:', fullPrompt.substring(0, 200) + '...');
     
     try {
+        // Call YOUR secure Vercel API instead of OpenAI directly
         const response = await fetch('/api/openai', {
             method: 'POST',
             headers: {
@@ -1465,25 +1404,26 @@ async function getAIResponse(userMessage) {
 async function speakResponse(text) {
     updateVoiceStatus('speaking', 'AI is speaking...');
     
-    let retryCount = 0;
-    const maxRetries = 2;
-    
-    while (retryCount < maxRetries && useElevenLabs) {
+    // Try ElevenLabs first if enabled
+    if (useElevenLabs) {
         try {
+            // More subtle pauses for natural British speech
             const naturalText = text
-                .replace(/\. /g, '.. ')
-                .replace(/\? /g, '?. ')
-                .replace(/: /g, ':. ');
+                .replace(/\. /g, '.. ') // Shorter pauses after sentences
+                .replace(/\? /g, '?. ') // Brief pause after questions
+                .replace(/: /g, ':. '); // Small pause after colons
             
+            // Adjust voice settings based on interviewer intensity
             const intensity = Object.values(traitValues).reduce((a, b) => a + b, 0) / Object.keys(traitValues).length;
             
             const voiceSettings = {
-                stability: intensity > 7 ? 0.55 : 0.65,
-                similarity_boost: 0.75,
-                style: intensity > 7 ? 0.6 : 0.4,
+                stability: intensity > 7 ? 0.55 : 0.65, // More natural variation
+                similarity_boost: 0.75, // Balanced for British accents
+                style: intensity > 7 ? 0.6 : 0.4, // More expressive
                 use_speaker_boost: true
             };
             
+            // Call YOUR secure Vercel API with scenario context
             const response = await fetch('/api/elevenlabs', {
                 method: 'POST',
                 headers: {
@@ -1491,8 +1431,8 @@ async function speakResponse(text) {
                 },
                 body: JSON.stringify({
                     text: naturalText,
-                    scenario: selectedScenario,
-                    model_id: 'eleven_turbo_v2',
+                    scenario: selectedScenario, // Pass scenario for voice selection
+                    model_id: 'eleven_turbo_v2', // Turbo model for better quality
                     voice_settings: voiceSettings
                 })
             });
@@ -1502,21 +1442,26 @@ async function speakResponse(text) {
                 const audioUrl = URL.createObjectURL(audioBlob);
                 const audio = new Audio(audioUrl);
                 
+                // Set volume and playback rate
                 audio.volume = 0.9;
-                audio.playbackRate = 1.05;
+                audio.playbackRate = 1.05; // Slightly faster for more natural British speech
                 
+                // Add error handling for audio playback
                 audio.onerror = (e) => {
                     console.error('Audio playback error:', e);
+                    // Fall back to browser speech
                     useElevenLabs = false;
                     speakWithBrowserTTS(text);
                 };
                 
+                // Play the audio
                 const playPromise = audio.play();
                 
                 if (playPromise !== undefined) {
                     playPromise
                         .then(() => {
                             console.log('Audio playing successfully');
+                            // Reset voice indicator to show ElevenLabs is working
                             const indicator = document.getElementById('voice-status-indicator');
                             if (indicator) {
                                 indicator.textContent = '🎤 VOICE ENABLED';
@@ -1525,6 +1470,7 @@ async function speakResponse(text) {
                         })
                         .catch(error => {
                             console.error('Audio play failed:', error);
+                            // Fall back to browser speech
                             useElevenLabs = false;
                             speakWithBrowserTTS(text);
                         });
@@ -1535,48 +1481,43 @@ async function speakResponse(text) {
                     URL.revokeObjectURL(audioUrl);
                 };
                 
-                return;
+                return; // Success with ElevenLabs
             } else {
                 console.error('ElevenLabs API error:', response.status);
                 const errorData = await response.json();
                 console.error('Error details:', errorData);
-                retryCount++;
-                
-                if (retryCount < maxRetries) {
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                } else {
-                    useElevenLabs = false;
-                }
+                // Fall back to browser speech
+                useElevenLabs = false;
             }
         } catch (error) {
             console.error('ElevenLabs error:', error);
-            retryCount++;
-            
-            if (retryCount < maxRetries) {
-                await new Promise(resolve => setTimeout(resolve, 1000));
-            } else {
-                useElevenLabs = false;
-            }
+            // Fall back to browser speech
+            useElevenLabs = false;
         }
     }
     
+    // Fallback to browser's built-in speech synthesis
     speakWithBrowserTTS(text);
 }
 
 function speakWithBrowserTTS(text) {
+    // Update indicator to show we're using browser TTS
     const indicator = document.getElementById('voice-status-indicator');
     if (indicator) {
         indicator.textContent = '🔊 BROWSER VOICE';
-        indicator.style.background = '#ffc107';
+        indicator.style.background = '#ffc107'; // Yellow to indicate fallback
     }
     
     if ('speechSynthesis' in window) {
+        // Cancel any ongoing speech
         speechSynthesis.cancel();
         
         const utterance = new SpeechSynthesisUtterance(text);
         
+        // Get available voices and prioritize British ones
         const voices = speechSynthesis.getVoices();
         
+        // Look for British voices first
         const britishVoices = voices.filter(voice => 
             voice.lang.includes('en-GB') || 
             voice.lang.includes('en_GB') ||
@@ -1584,9 +1525,12 @@ function speakWithBrowserTTS(text) {
             voice.name.toLowerCase().includes('uk')
         );
         
+        // Fallback to any English voice if no British found
         const englishVoices = voices.filter(voice => voice.lang.startsWith('en'));
         
+        // Select the best available voice
         if (britishVoices.length > 0) {
+            // Prefer Google UK voices or Microsoft voices which tend to sound better
             const preferredBritish = britishVoices.find(voice => 
                 voice.name.includes('Google UK') || 
                 voice.name.includes('Microsoft') ||
@@ -1599,7 +1543,8 @@ function speakWithBrowserTTS(text) {
             console.log('Using English voice (no British found):', utterance.voice.name);
         }
         
-        utterance.rate = 1.1;
+        // Adjust speech parameters for more natural British sound
+        utterance.rate = 1.1; // Slightly faster for natural British speech
         utterance.pitch = 1.0;
         utterance.volume = 0.9;
         
@@ -1619,67 +1564,88 @@ function speakWithBrowserTTS(text) {
     }
 }
 
-// Fixed endTraining function
-function endTraining() {
-    if (confirm('Are you sure you want to end this training session?')) {
-        stopSessionTimer();
+// Test function to verify persona mapping
+function testPersonaMapping() {
+    console.log('🧪 Testing Persona Mapping...');
+    
+    // Test all scenario-persona combinations
+    const testCombinations = [
+        // Committee
+        ['committee', 'forensic-chair'],
+        ['committee', 'backbench-terrier'],
+        ['committee', 'technical-specialist'],
         
-        console.log('📝 Ending training, showing feedback page...');
+        // Media
+        ['media', 'political-heavyweight'],
+        ['media', 'time-pressure-broadcaster'],
+        ['media', 'investigative-journalist'],
+        ['media', 'sympathetic-professional'],
         
-        // Hide ALL pages first
-        document.querySelectorAll('.page').forEach(page => {
-            page.style.display = 'none';
-        });
+        // Consultation
+        ['consultation', 'concerned-local'],
+        ['consultation', 'business-voice'],
+        ['consultation', 'informed-activist'],
         
-        // Hide step indicator
-        const stepIndicator = document.getElementById('step-indicator');
-        if (stepIndicator) {
-            stepIndicator.style.display = 'none';
-        }
+        // Interview
+        ['interview', 'senior-stakeholder'],
+        ['interview', 'technical-evaluator'],
+        ['interview', 'panel-perspective'],
+        ['interview', 'supportive-developer']
+    ];
+    
+    let passedTests = 0;
+    let totalTests = testCombinations.length;
+    
+    testCombinations.forEach(([scenario, persona]) => {
+        const key = `${scenario}-${persona}`;
+        const prompt = systemPrompts[key];
         
-        // Show feedback page
-        const feedbackPage = document.getElementById('feedback-page');
-        if (feedbackPage) {
-            feedbackPage.style.display = 'block';
-            console.log('✅ Feedback page shown');
+        if (prompt) {
+            console.log(`✅ ${key} → Found prompt`);
+            passedTests++;
         } else {
-            console.error('❌ Feedback page not found!');
-            // Fallback - go to page 1
-            goToPage(1);
+            console.error(`❌ ${key} → Missing prompt!`);
         }
-        
-        updateVoiceStatus('ready', 'Session ended');
+    });
+    
+    console.log(`\n📊 Test Results: ${passedTests}/${totalTests} passed`);
+    
+    if (passedTests === totalTests) {
+        console.log('🎉 All persona mappings working correctly!');
+    } else {
+        console.error('💥 Some persona mappings are broken - check the keys above');
+        console.log('Available prompt keys:', Object.keys(systemPrompts));
     }
+    
+    return passedTests === totalTests;
 }
 
-// Debug function to check feedback page state
-function debugFeedbackPage() {
-    console.log('🔍 Feedback Page Debug:');
-    const feedbackPage = document.getElementById('feedback-page');
-    console.log('Feedback page exists:', !!feedbackPage);
-    console.log('Feedback page display:', feedbackPage ? feedbackPage.style.display : 'N/A');
-    console.log('Current page:', currentPage);
-    console.log('Session rating:', sessionRating);
+// Test voice functionality
+function testVoices() {
+    console.log('🔊 Testing Voice System...');
     
-    // Check all pages
-    const pages = document.querySelectorAll('.page');
-    pages.forEach(page => {
-        if (page.style.display !== 'none') {
-            console.log(`Visible page: ${page.id}`);
-        }
-    });
-}
-
-// Helper function to debug page visibility
-function debugPageVisibility() {
-    console.log('🔍 Page Visibility Debug:');
-    const pages = document.querySelectorAll('.page');
-    pages.forEach(page => {
-        console.log(`${page.id}: ${page.style.display || 'default'}`);
-    });
+    // Test ElevenLabs for each scenario
+    const scenarios = ['committee', 'media', 'consultation', 'interview'];
+    console.log('Testing ElevenLabs voices for scenarios:', scenarios);
     
-    const stepIndicator = document.getElementById('step-indicator');
-    console.log(`Step Indicator: ${stepIndicator ? stepIndicator.style.display : 'not found'}`);
+    // Test browser TTS
+    if ('speechSynthesis' in window) {
+        const voices = speechSynthesis.getVoices();
+        const britishVoices = voices.filter(v => 
+            v.lang.includes('en-GB') || 
+            v.lang.includes('en_GB') ||
+            v.name.toLowerCase().includes('british') ||
+            v.name.toLowerCase().includes('uk')
+        );
+        
+        console.log(`Browser TTS: Found ${britishVoices.length} British voices`);
+        britishVoices.forEach(v => {
+            console.log(`- ${v.name} (${v.lang})`);
+        });
+    }
+    
+    // You can test a specific voice by calling:
+    // speakResponse("Hello, this is a test of the voice system.");
 }
 
 // Global functions for onclick handlers
@@ -1691,13 +1657,15 @@ window.endTraining = endTraining;
 window.handleKeyPress = handleKeyPress;
 window.sendMessage = sendMessage;
 window.toggleVoiceRecognition = toggleVoiceRecognition;
+window.testPersonaMapping = testPersonaMapping;
+window.testVoices = testVoices;
+window.addTopLine = addTopLine;
+window.removeTopLine = removeTopLine;
+window.resetForNewSession = resetForNewSession;
+
+// Firebase Auth functions (make global)
 window.signInWithGoogle = signInWithGoogle;
 window.signInWithEmail = signInWithEmail;
 window.signUpWithEmail = signUpWithEmail;
 window.signOut = signOut;
 window.checkFormFields = checkFormFields;
-window.setRating = setRating;
-window.submitFeedback = submitFeedback;
-window.showHistory = showHistory;
-window.debugPageVisibility = debugPageVisibility;
-window.debugFeedbackPage = debugFeedbackPage;
