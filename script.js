@@ -24,41 +24,55 @@ let isRecording = false;
 let recognition = null;
 let speechSynthesis = window.speechSynthesis;
 
-// FIXED: PDF.js setup with working CDN
-let pdfjsLib = null;
+// FIXED: PDF.js setup - using traditional approach
+let pdfJsReady = false;
 
-// UPDATED: Initialize PDF.js with current working CDN
-async function initializePDFJS() {
-    try {
-        // Load PDF.js using ES modules from official CDN
-        pdfjsLib = await import('https://mozilla.github.io/pdf.js/build/pdf.mjs');
-        
-        // Set worker source to official CDN
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://mozilla.github.io/pdf.js/build/pdf.worker.mjs';
-        
-        console.log('✅ PDF.js loaded successfully');
-    } catch (error) {
-        console.error('❌ Failed to load PDF.js:', error);
+// UPDATED: Initialize PDF.js with working CDN (traditional script loading)
+function initializePDFJS() {
+    // Check if PDF.js is already loaded (from script tag in HTML)
+    if (typeof pdfjsLib !== 'undefined') {
+        // Set worker source to CDN
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+        pdfJsReady = true;
+        console.log('✅ PDF.js loaded and configured successfully');
+    } else {
+        // Load PDF.js dynamically if not already loaded
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js';
+        script.onload = () => {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+            pdfJsReady = true;
+            console.log('✅ PDF.js loaded dynamically and configured');
+        };
+        script.onerror = () => {
+            console.error('❌ Failed to load PDF.js from CDN');
+        };
+        document.head.appendChild(script);
     }
 }
 
 // UPDATED: PDF text extraction function with working API
 async function extractPDFText(file) {
-    if (!pdfjsLib) {
-        throw new Error('PDF.js not loaded');
+    if (!pdfJsReady) {
+        throw new Error('PDF.js not ready. Please wait for initialization.');
     }
     
     try {
+        console.log(`📄 Starting extraction for: ${file.name}`);
+        
         const arrayBuffer = await file.arrayBuffer();
+        console.log(`📄 File read: ${arrayBuffer.byteLength} bytes`);
         
-        // FIXED: Use correct API with .promise
+        // FIXED: Use correct API call
         const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-        let fullText = '';
+        console.log(`📄 PDF loaded: ${pdf.numPages} pages`);
         
-        console.log(`📄 Processing PDF: ${file.name} (${pdf.numPages} pages)`);
+        let fullText = '';
         
         // Process each page
         for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+            console.log(`📄 Processing page ${pageNum}/${pdf.numPages}`);
+            
             const page = await pdf.getPage(pageNum);
             const textContent = await page.getTextContent();
             
@@ -73,7 +87,7 @@ async function extractPDFText(file) {
         // Clean up the text
         fullText = fullText.replace(/\s+/g, ' ').trim();
         
-        console.log(`✅ Extracted ${fullText.length} characters from ${file.name}`);
+        console.log(`✅ Extraction complete: ${fullText.length} characters from ${file.name}`);
         return fullText;
     } catch (error) {
         console.error(`❌ Error extracting text from ${file.name}:`, error);
@@ -81,7 +95,7 @@ async function extractPDFText(file) {
     }
 }
 
-// Firebase Authentication Functions
+// Firebase Authentication Functions (unchanged)
 auth.onAuthStateChanged(function(user) {
     console.log('🔥 Auth state changed:', user ? 'LOGGED IN' : 'LOGGED OUT');
     if (user) {
@@ -291,7 +305,7 @@ function resetApplicationState() {
     });
 }
 
-// Feedback System Functions
+// Feedback System Functions (unchanged)
 function setRating(rating) {
     sessionRating = rating;
     const stars = document.querySelectorAll('.star');
@@ -894,6 +908,20 @@ async function extractTextsFromFiles(files, type) {
                 // Show processing status
                 fileDiv.innerHTML = `📄 ${file.name} <span style="color: #ffc107;">⏳ Extracting text...</span>`;
                 
+                // Wait for PDF.js to be ready
+                if (!pdfJsReady) {
+                    fileDiv.innerHTML = `📄 ${file.name} <span style="color: #ffc107;">⏳ Waiting for PDF.js...</span>`;
+                    // Wait up to 5 seconds for PDF.js to load
+                    let attempts = 0;
+                    while (!pdfJsReady && attempts < 50) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        attempts++;
+                    }
+                    if (!pdfJsReady) {
+                        throw new Error('PDF.js failed to load');
+                    }
+                }
+                
                 const extractedText = await extractPDFText(file);
                 
                 // Store the extracted text
@@ -915,7 +943,7 @@ async function extractTextsFromFiles(files, type) {
                 
             } catch (error) {
                 console.error(`Failed to extract text from ${file.name}:`, error);
-                fileDiv.innerHTML = `📄 ${file.name} <span style="color: #dc3545;">❌ Text extraction failed</span>`;
+                fileDiv.innerHTML = `📄 ${file.name} <span style="color: #dc3545;">❌ Text extraction failed: ${error.message}</span>`;
             }
         } else {
             // Non-PDF files - just show filename
