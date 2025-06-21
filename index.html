@@ -14,6 +14,7 @@
                 <li><a href="#home">Home</a></li>
                 <li><a href="#training">Training</a></li>
                 <li><a href="#about">About</a></li>
+                <li><a href="#" onclick="signOut()" id="logout-link" style="display: none;">Logout</a></li>
             </ul>
         </nav>
     </header>
@@ -27,6 +28,43 @@
 
     <div class="container">
         <div class="main-content">
+            <!-- Login Page -->
+            <div class="page active" id="login-page">
+                <div style="display: flex; align-items: center; justify-content: center; min-height: 500px; padding: 2rem;">
+                    <div style="background: white; padding: 3rem; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 400px; width: 100%;">
+                        <h2 style="text-align: center; margin-bottom: 2rem; color: #333;">Welcome to Training Pro</h2>
+                        
+                        <!-- Google Sign In Button -->
+                        <button onclick="signInWithGoogle()" style="width: 100%; padding: 1rem; background: #4285f4; color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; margin-bottom: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: all 0.3s;">
+                            <span>🚀</span> Sign in with Google
+                        </button>
+                        
+                        <div style="text-align: center; margin: 1rem 0; color: #666;">or</div>
+                        
+                        <!-- Email/Password Form -->
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Email</label>
+                            <input type="email" id="email" placeholder="your@email.com" style="width: 100%; padding: 0.8rem; border: 2px solid #e9ecef; border-radius: 8px; font-size: 1rem; transition: border-color 0.3s;">
+                        </div>
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Password</label>
+                            <input type="password" id="password" placeholder="Enter password" style="width: 100%; padding: 0.8rem; border: 2px solid #e9ecef; border-radius: 8px; font-size: 1rem; transition: border-color 0.3s;">
+                        </div>
+                        
+                        <button onclick="signInWithEmail()" style="width: 100%; padding: 0.8rem 2rem; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin-bottom: 1rem; transition: all 0.3s;">
+                            Sign In
+                        </button>
+                        
+                        <button onclick="signUpWithEmail()" style="width: 100%; padding: 0.8rem 2rem; border: 2px solid #667eea; background: transparent; color: #667eea; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s;">
+                            Create Account
+                        </button>
+                        
+                        <div id="auth-error" style="color: #dc3545; text-align: center; margin-top: 1rem; display: none; padding: 0.5rem; background: #f8d7da; border-radius: 4px;"></div>
+                        <div id="auth-success" style="color: #28a745; text-align: center; margin-top: 1rem; display: none; padding: 0.5rem; background: #d4edda; border-radius: 4px;"></div>
+                    </div>
+                </div>
+            </div>
+
             <div class="step-indicator">
                 <div class="step active" id="step-1">
                     <div class="step-number">1</div>
@@ -51,7 +89,7 @@
             </div>
 
             <!-- Page 1: Scenario Selection -->
-            <div class="page active" id="page-1">
+            <div class="page" id="page-1">
                 <h2>Choose Your Training Scenario</h2>
                 <div class="scenarios">
                     <div class="scenario-card" data-scenario="committee">
@@ -238,6 +276,57 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Feedback Page -->
+            <div class="page" id="feedback-page">
+                <div style="padding: 2rem;">
+                    <h2>Session Feedback</h2>
+                    
+                    <div style="background: #f8f9fa; padding: 2rem; border-radius: 15px; margin: 2rem 0;">
+                        <h3>How did that session go?</h3>
+                        
+                        <div style="display: flex; gap: 0.5rem; justify-content: center; margin: 1rem 0;" id="rating-stars">
+                            <span class="star" onclick="setRating(1)" style="font-size: 2rem; color: #ddd; cursor: pointer; transition: color 0.2s;">★</span>
+                            <span class="star" onclick="setRating(2)" style="font-size: 2rem; color: #ddd; cursor: pointer; transition: color 0.2s;">★</span>
+                            <span class="star" onclick="setRating(3)" style="font-size: 2rem; color: #ddd; cursor: pointer; transition: color 0.2s;">★</span>
+                            <span class="star" onclick="setRating(4)" style="font-size: 2rem; color: #ddd; cursor: pointer; transition: color 0.2s;">★</span>
+                            <span class="star" onclick="setRating(5)" style="font-size: 2rem; color: #ddd; cursor: pointer; transition: color 0.2s;">★</span>
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">What went well? What would you improve?</label>
+                            <textarea id="feedback-text" placeholder="Share your thoughts on this training session..." style="width: 100%; padding: 1rem; border: 2px solid #e9ecef; border-radius: 8px; resize: vertical; min-height: 100px;"></textarea>
+                        </div>
+
+                        <h4>AI Performance Analysis</h4>
+                        <div style="background: white; padding: 1.5rem; border-radius: 10px; margin: 1rem 0;">
+                            <p><strong>Response Clarity:</strong> <span style="color: #28a745;">Good</span> - Your answers were clear and direct</p>
+                            <div style="background: #e9ecef; height: 8px; border-radius: 4px; overflow: hidden; margin: 1rem 0;">
+                                <div style="background: linear-gradient(90deg, #667eea, #764ba2); height: 100%; width: 75%; transition: width 0.3s ease;"></div>
+                            </div>
+                            
+                            <p><strong>Confidence Level:</strong> <span style="color: #ffc107;">Moderate</span> - Some hesitation detected in voice patterns</p>
+                            <div style="background: #e9ecef; height: 8px; border-radius: 4px; overflow: hidden; margin: 1rem 0;">
+                                <div style="background: linear-gradient(90deg, #667eea, #764ba2); height: 100%; width: 60%; transition: width 0.3s ease;"></div>
+                            </div>
+                            
+                            <p><strong>Key Messages:</strong> <span style="color: #28a745;">Strong</span> - Successfully communicated main points</p>
+                            <div style="background: #e9ecef; height: 8px; border-radius: 4px; overflow: hidden; margin: 1rem 0;">
+                                <div style="background: linear-gradient(90deg, #667eea, #764ba2); height: 100%; width: 85%; transition: width 0.3s ease;"></div>
+                            </div>
+                        </div>
+
+                        <h4>Recommendations for Next Session</h4>
+                        <ul style="background: white; padding: 1.5rem; border-radius: 10px; margin: 1rem 0;">
+                            <li>Practice speaking more slowly during complex explanations</li>
+                            <li>Use more concrete examples to support your points</li>
+                            <li>Try the "bridging" technique when faced with difficult questions</li>
+                        </ul>
+
+                        <button class="btn btn-primary" onclick="submitFeedback()">Save Feedback & Return to Dashboard</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -262,6 +351,29 @@
         </div>
     </div>
 
-<script src="script.js"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <!-- Your Firebase Config -->
+    <script>
+        // REPLACE THIS WITH YOUR ACTUAL FIREBASE CONFIG
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const googleProvider = new firebase.auth.GoogleAuthProvider();
+    </script>
+
+    <script src="script.js"></script>
 </body>
 </html>
