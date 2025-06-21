@@ -1,5 +1,8 @@
-// Complete Fixed script.js - Part 1
-// Global state variables
+// Firebase Authentication Variables
+let currentUser = null;
+let sessionRating = 0;
+
+// Global state variables (your existing code)
 let currentPage = 1;
 let selectedScenario = '';
 let selectedPersona = '';
@@ -20,7 +23,296 @@ let isRecording = false;
 let recognition = null;
 let speechSynthesis = window.speechSynthesis;
 
-// Trait definitions for different scenarios
+// Firebase Authentication Functions
+auth.onAuthStateChanged(function(user) {
+    if (user) {
+        currentUser = user;
+        console.log('User logged in:', user.email);
+        showLoggedInState();
+        // Only redirect to page 1 if we're on the login page
+        if (document.getElementById('login-page').classList.contains('active')) {
+            goToPage(1);
+        }
+    } else {
+        currentUser = null;
+        console.log('User logged out');
+        showLoginPage();
+    }
+});
+
+function showLoginPage() {
+    // Hide all pages
+    document.querySelectorAll('.page').forEach(page => {
+        page.classList.remove('active');
+    });
+    // Show login page
+    document.getElementById('login-page').classList.add('active');
+    // Hide logout link
+    document.getElementById('logout-link').style.display = 'none';
+}
+
+function showLoggedInState() {
+    // Show logout link
+    document.getElementById('logout-link').style.display = 'block';
+}
+
+function signInWithGoogle() {
+    showAuthMessage('Signing in with Google...', 'success');
+    auth.signInWithPopup(googleProvider)
+        .then((result) => {
+            console.log('Google sign-in successful');
+            showAuthMessage('Welcome! Redirecting to training...', 'success');
+            // User will be automatically redirected by onAuthStateChanged
+        })
+        .catch((error) => {
+            console.error('Google sign-in error:', error);
+            showAuthError(error.message);
+        });
+}
+
+function signInWithEmail() {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value.trim();
+    
+    if (!email || !password) {
+        showAuthError('Please enter both email and password');
+        return;
+    }
+    
+    showAuthMessage('Signing in...', 'success');
+    auth.signInWithEmailAndPassword(email, password)
+        .then((result) => {
+            console.log('Email sign-in successful');
+            showAuthMessage('Welcome back! Redirecting...', 'success');
+            // User will be automatically redirected by onAuthStateChanged
+        })
+        .catch((error) => {
+            console.error('Email sign-in error:', error);
+            showAuthError(getErrorMessage(error.code));
+        });
+}
+
+function signUpWithEmail() {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value.trim();
+    
+    if (!email || !password) {
+        showAuthError('Please enter both email and password');
+        return;
+    }
+    
+    if (password.length < 6) {
+        showAuthError('Password must be at least 6 characters');
+        return;
+    }
+    
+    showAuthMessage('Creating account...', 'success');
+    auth.createUserWithEmailAndPassword(email, password)
+        .then((result) => {
+            console.log('Account created successfully');
+            showAuthMessage('Account created! Welcome to Training Pro!', 'success');
+            // User will be automatically redirected by onAuthStateChanged
+        })
+        .catch((error) => {
+            console.error('Sign-up error:', error);
+            showAuthError(getErrorMessage(error.code));
+        });
+}
+
+function signOut() {
+    if (confirm('Are you sure you want to sign out?')) {
+        auth.signOut().then(() => {
+            console.log('User signed out');
+            // Reset application state
+            resetApplicationState();
+            // User will be automatically redirected to login by onAuthStateChanged
+        });
+    }
+}
+
+function showAuthError(message) {
+    const errorDiv = document.getElementById('auth-error');
+    const successDiv = document.getElementById('auth-success');
+    successDiv.style.display = 'none';
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+    setTimeout(() => {
+        errorDiv.style.display = 'none';
+    }, 5000);
+}
+
+function showAuthMessage(message, type) {
+    const errorDiv = document.getElementById('auth-error');
+    const successDiv = document.getElementById('auth-success');
+    errorDiv.style.display = 'none';
+    successDiv.textContent = message;
+    successDiv.style.display = 'block';
+    if (type === 'success') {
+        setTimeout(() => {
+            successDiv.style.display = 'none';
+        }, 3000);
+    }
+}
+
+function getErrorMessage(errorCode) {
+    switch (errorCode) {
+        case 'auth/user-not-found':
+            return 'No account found with this email address.';
+        case 'auth/wrong-password':
+            return 'Incorrect password.';
+        case 'auth/email-already-in-use':
+            return 'An account with this email already exists.';
+        case 'auth/weak-password':
+            return 'Password should be at least 6 characters.';
+        case 'auth/invalid-email':
+            return 'Please enter a valid email address.';
+        case 'auth/too-many-requests':
+            return 'Too many failed attempts. Please try again later.';
+        default:
+            return 'An error occurred. Please try again.';
+    }
+}
+
+function resetApplicationState() {
+    currentPage = 1;
+    selectedScenario = '';
+    selectedPersona = '';
+    scenarioDescription = '';
+    userRole = '';
+    companyContext = '';
+    policyFiles = [];
+    briefingFiles = [];
+    traitValues = {};
+    conversationHistory = [];
+    isRecording = false;
+    
+    // Reset UI
+    document.body.className = '';
+    document.querySelectorAll('.scenario-card').forEach(card => {
+        card.classList.remove('active');
+    });
+    document.querySelectorAll('.persona-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Clear form fields
+    const fields = ['scenario-description', 'your-role', 'company-context', 'email', 'password'];
+    fields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) field.value = '';
+    });
+}
+
+// Feedback System Functions
+function setRating(rating) {
+    sessionRating = rating;
+    const stars = document.querySelectorAll('.star');
+    stars.forEach((star, index) => {
+        if (index < rating) {
+            star.style.color = '#ffc107';
+        } else {
+            star.style.color = '#ddd';
+        }
+    });
+}
+
+function submitFeedback() {
+    const feedback = document.getElementById('feedback-text').value.trim();
+    
+    if (sessionRating === 0) {
+        alert('Please rate your session before submitting feedback.');
+        return;
+    }
+    
+    // Save session data to Firestore
+    if (currentUser) {
+        const sessionData = {
+            userId: currentUser.uid,
+            userEmail: currentUser.email,
+            scenario: selectedScenario,
+            persona: selectedPersona,
+            rating: sessionRating,
+            feedback: feedback,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            sessionDuration: conversationHistory.length,
+            userRole: userRole,
+            scenarioDescription: scenarioDescription
+        };
+        
+        db.collection('trainingSessions').add(sessionData)
+            .then((docRef) => {
+                console.log('Session saved with ID: ', docRef.id);
+                alert('Feedback saved! Great work on your training session.');
+                goToPage(1); // Return to scenario selection
+                resetForNewSession();
+            })
+            .catch((error) => {
+                console.error('Error saving session: ', error);
+                alert('Feedback saved locally! Your session data has been recorded.');
+                goToPage(1);
+                resetForNewSession();
+            });
+    } else {
+        alert('Feedback saved! Great work on your training session.');
+        goToPage(1);
+        resetForNewSession();
+    }
+}
+
+function resetForNewSession() {
+    // Reset session-specific data but keep user logged in
+    selectedScenario = '';
+    selectedPersona = '';
+    scenarioDescription = '';
+    userRole = '';
+    companyContext = '';
+    policyFiles = [];
+    briefingFiles = [];
+    traitValues = {};
+    conversationHistory = [];
+    sessionRating = 0;
+    
+    // Reset UI elements
+    document.body.className = '';
+    document.querySelectorAll('.scenario-card').forEach(card => {
+        card.classList.remove('active');
+    });
+    document.querySelectorAll('.persona-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Clear form fields except login
+    const fields = ['scenario-description', 'your-role', 'company-context', 'feedback-text'];
+    fields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) field.value = '';
+    });
+    
+    // Reset buttons
+    const nextBtn2 = document.getElementById('next-to-page-2');
+    const nextBtn4 = document.getElementById('next-to-page-4');
+    if (nextBtn2) nextBtn2.disabled = true;
+    if (nextBtn4) nextBtn4.disabled = true;
+    
+    // Clear file uploads
+    const fileContainers = ['policy-files', 'briefing-files'];
+    fileContainers.forEach(containerId => {
+        const container = document.getElementById(containerId);
+        if (container) container.innerHTML = '';
+    });
+    
+    // Clear chat
+    const messagesContainer = document.getElementById('chat-messages');
+    if (messagesContainer) {
+        messagesContainer.innerHTML = `
+            <div class="message interviewer">
+                <strong>Interviewer:</strong> Welcome to your training session. Are you ready to begin?
+            </div>
+        `;
+    }
+}
+
+// Your existing trait definitions and personas (keep exactly the same)
 const traitDefinitions = {
     committee: {
         aggressiveness: {
@@ -128,7 +420,7 @@ const traitDefinitions = {
     }
 };
 
-// Updated Personas for each scenario type
+// Updated Personas for each scenario type (keep exactly the same)
 const personas = {
     committee: [
         {
@@ -209,8 +501,8 @@ const personas = {
         }
     ]
 };
-// Complete Fixed script.js - Part 2
-// CORRECTED System prompts with proper key mapping
+
+// CORRECTED System prompts with proper key mapping (keep exactly the same)
 const systemPrompts = {
     // COMMITTEE PERSONAS - Keys must match exactly with persona IDs
     'committee-forensic-chair': 'Channel the select committee chair style of figures like Yvette Cooper or Hilary Benn - methodical, evidence-based questioning that builds cases systematically. Reference previous witness testimony, maintain formal parliamentary courtesy but be relentless in pursuing facts. Use the questioning approach seen in Hansard transcripts - start with context-setting, then drill down systematically. Remember everything they\'ve said and build your case witness by witness. Keep responses to 1-2 sentences maximum.',
@@ -245,10 +537,11 @@ const systemPrompts = {
     'interview-supportive-developer': 'Focus on potential and growth mindset over perfect answers. Ask about learning experiences, how they handle failure, what they want to develop. Probe for curiosity, adaptability, and genuine enthusiasm for growth using supportive but thorough questioning techniques. Build on their examples positively while still challenging them. Keep responses to 1-2 sentences maximum.'
 };
 
-// Initialize the application
+// Initialize the application (modified for Firebase)
 document.addEventListener('DOMContentLoaded', function() {
     initializeVoiceRecognition();
     setupEventListeners();
+    // Firebase auth state will handle initial page display
 });
 
 function initializeVoiceRecognition() {
@@ -324,7 +617,7 @@ function selectScenario(scenario) {
     // Update step
     updateStep(1);
 }
-// Complete Fixed script.js - Part 3
+
 function goToPage(pageNumber) {
     // Hide current page
     document.querySelectorAll('.page').forEach(page => {
@@ -662,7 +955,7 @@ function handleKeyPress(event) {
         sendMessage();
     }
 }
-// Complete Fixed script.js - Part 4
+
 async function sendMessage() {
     const input = document.getElementById('user-input');
     if (!input) return;
@@ -914,46 +1207,9 @@ async function speakResponse(text) {
 
 function endTraining() {
     if (confirm('Are you sure you want to end this training session?')) {
-        // Reset conversation history
-        conversationHistory = [];
-        
-        goToPage(1);
-        updateStep(1);
-        
-        // Reset state
-        selectedScenario = '';
-        selectedPersona = '';
-        document.body.className = '';
-        
-        // Reset form fields
-        const fields = ['scenario-description', 'your-role', 'company-context'];
-        fields.forEach(fieldId => {
-            const field = document.getElementById(fieldId);
-            if (field) field.value = '';
-        });
-        
-        // Clear file uploads
-        policyFiles = [];
-        briefingFiles = [];
-        const fileContainers = ['policy-files', 'briefing-files'];
-        fileContainers.forEach(containerId => {
-            const container = document.getElementById(containerId);
-            if (container) container.innerHTML = '';
-        });
-        
-        // Reset UI
-        document.querySelectorAll('.scenario-card').forEach(card => {
-            card.classList.remove('active');
-        });
-        document.querySelectorAll('.persona-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        
-        // Disable buttons
-        const nextBtn2 = document.getElementById('next-to-page-2');
-        const nextBtn4 = document.getElementById('next-to-page-4');
-        if (nextBtn2) nextBtn2.disabled = true;
-        if (nextBtn4) nextBtn4.disabled = true;
+        // Go to feedback page instead of resetting everything
+        document.getElementById('feedback-page').classList.add('active');
+        document.getElementById('page-5').classList.remove('active');
     }
 }
 
@@ -1024,3 +1280,13 @@ window.handleKeyPress = handleKeyPress;
 window.sendMessage = sendMessage;
 window.toggleVoiceRecognition = toggleVoiceRecognition;
 window.testPersonaMapping = testPersonaMapping;
+
+// Firebase Auth functions (make global)
+window.signInWithGoogle = signInWithGoogle;
+window.signInWithEmail = signInWithEmail;
+window.signUpWithEmail = signUpWithEmail;
+window.signOut = signOut;
+
+// Feedback functions (make global)
+window.setRating = setRating;
+window.submitFeedback = submitFeedback;
