@@ -12,8 +12,7 @@ let companyContext = '';
 let policyFiles = [];
 let briefingFiles = [];
 let traitValues = {};
-let openaiApiKey = '';
-let elevenlabsApiKey = '';
+// API keys are now securely stored on Vercel - no longer needed here
 
 // NEW: Conversation memory
 let conversationHistory = [];
@@ -25,17 +24,19 @@ let speechSynthesis = window.speechSynthesis;
 
 // Firebase Authentication Functions
 auth.onAuthStateChanged(function(user) {
+    console.log('🔥 Auth state changed:', user ? 'LOGGED IN' : 'LOGGED OUT');
     if (user) {
         currentUser = user;
-        console.log('User logged in:', user.email);
+        console.log('✅ User logged in:', user.email);
         showLoggedInState();
         // Only redirect to page 1 if we're on the login page
         if (document.getElementById('login-page').classList.contains('active')) {
+            console.log('📱 Redirecting to main app...');
             goToPage(1);
         }
     } else {
         currentUser = null;
-        console.log('User logged out');
+        console.log('❌ User logged out');
         showLoginPage();
     }
 });
@@ -541,7 +542,10 @@ const systemPrompts = {
 document.addEventListener('DOMContentLoaded', function() {
     initializeVoiceRecognition();
     setupEventListeners();
-    // Firebase auth state will handle initial page display
+    
+    // Ensure login page is shown initially
+    console.log('🔥 App loaded - waiting for Firebase auth...');
+    showLoginPage();
 });
 
 function initializeVoiceRecognition() {
@@ -872,25 +876,7 @@ function updateVoiceStatus(status, message) {
     }
 }
 
-function saveApiKeys() {
-    const openaiKey = document.getElementById('openai-key').value.trim();
-    const elevenlabsKey = document.getElementById('elevenlabs-key').value.trim();
-    
-    if (!openaiKey) {
-        alert('OpenAI API key is required');
-        return;
-    }
-    
-    openaiApiKey = openaiKey;
-    elevenlabsApiKey = elevenlabsKey;
-    
-    const modal = document.getElementById('api-key-modal');
-    if (modal) {
-        modal.style.display = 'none';
-    }
-    
-    beginTrainingSession();
-}
+// Removed saveApiKeys function - API keys are now embedded
 
 function startTraining() {
     // Capture all form data
@@ -902,11 +888,8 @@ function startTraining() {
     if (roleInput) userRole = roleInput.value.trim();
     if (contextInput) companyContext = contextInput.value.trim();
     
-    // Show API key modal
-    const modal = document.getElementById('api-key-modal');
-    if (modal) {
-        modal.style.display = 'flex';
-    }
+    // Skip API key modal - keys are embedded
+    beginTrainingSession();
 }
 
 function beginTrainingSession() {
@@ -1000,10 +983,8 @@ async function sendMessage() {
         
         addMessage(response, 'interviewer');
         
-        // Convert response to speech if ElevenLabs key available
-        if (elevenlabsApiKey) {
-            await speakResponse(response);
-        }
+        // Convert response to speech using your secure API
+        await speakResponse(response);
         
         updateVoiceStatus('ready', 'Ready for voice input');
     } catch (error) {
@@ -1035,7 +1016,7 @@ function addMessage(message, sender) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// FIXED AI Response function with debugging
+// Updated AI Response function - now calls your secure Vercel API
 async function getAIResponse(userMessage) {
     // Fixed persona mapping with debugging
     const personaKey = `${selectedScenario}-${selectedPersona}`;
@@ -1119,11 +1100,11 @@ async function getAIResponse(userMessage) {
     console.log('📝 Final prompt preview:', fullPrompt.substring(0, 200) + '...');
     
     try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        // Call YOUR secure Vercel API instead of OpenAI directly
+        const response = await fetch('/api/openai', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${openaiApiKey}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 model: 'gpt-4',
@@ -1154,26 +1135,19 @@ async function getAIResponse(userMessage) {
         
     } catch (error) {
         console.error('💥 Error in getAIResponse:', error);
-        if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
-            throw new Error('Network error. Please ensure you have proper API access or deploy to a server.');
-        } else {
-            throw error;
-        }
+        throw new Error('Failed to get AI response. Please try again.');
     }
 }
 
 async function speakResponse(text) {
-    if (!elevenlabsApiKey) return;
-    
     updateVoiceStatus('speaking', 'AI is speaking...');
     
     try {
-        const response = await fetch('https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM', {
+        // Call YOUR secure Vercel API instead of ElevenLabs directly
+        const response = await fetch('/api/elevenlabs', {
             method: 'POST',
             headers: {
-                'Accept': 'audio/mpeg',
-                'Content-Type': 'application/json',
-                'xi-api-key': elevenlabsApiKey
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 text: text,
@@ -1274,7 +1248,6 @@ window.goToPage = goToPage;
 window.selectScenario = selectScenario;
 window.selectPersona = selectPersona;
 window.startTraining = startTraining;
-window.saveApiKeys = saveApiKeys;
 window.endTraining = endTraining;
 window.handleKeyPress = handleKeyPress;
 window.sendMessage = sendMessage;
