@@ -6,7 +6,7 @@
     <title>Training Pro - Master Your Professional Presence</title>
     <link rel="stylesheet" href="styles.css">
     
-    <!-- ADDED: PDF.js library for PDF text extraction -->
+    <!-- PDF.js library for PDF text extraction -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 </head>
 <body>
@@ -16,6 +16,7 @@
             <ul class="nav-links">
                 <li><a href="#home">Home</a></li>
                 <li><a href="#training">Training</a></li>
+                <li><a href="#" onclick="showHistory()" id="history-link" style="display: none;">History</a></li>
                 <li><a href="#about">About</a></li>
                 <li><a href="#" onclick="signOut()" id="logout-link" style="display: none;">Logout</a></li>
             </ul>
@@ -32,7 +33,7 @@
     <div class="container">
         <div class="main-content">
             <!-- Login Page -->
-            <div class="page active" id="login-page">
+            <div class="page" id="login-page" style="display: none;">
                 <div style="display: flex; align-items: center; justify-content: center; min-height: 500px; padding: 2rem;">
                     <div style="background: white; padding: 3rem; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 400px; width: 100%;">
                         <h2 style="text-align: center; margin-bottom: 2rem; color: #333;">Welcome to Training Pro</h2>
@@ -68,7 +69,8 @@
                 </div>
             </div>
 
-            <div class="step-indicator">
+            <!-- Step Indicator (hidden by default) -->
+            <div class="step-indicator" id="step-indicator" style="display: none;">
                 <div class="step active" id="step-1">
                     <div class="step-number">1</div>
                     <span class="step-text">Choose Scenario</span>
@@ -92,7 +94,7 @@
             </div>
 
             <!-- Page 1: Scenario Selection -->
-            <div class="page" id="page-1">
+            <div class="page" id="page-1" style="display: none;">
                 <h2>Choose Your Training Scenario</h2>
                 <div class="scenarios">
                     <div class="scenario-card" data-scenario="committee">
@@ -123,7 +125,7 @@
             </div>
 
             <!-- Page 2: Scenario Customization -->
-            <div class="page" id="page-2">
+            <div class="page" id="page-2" style="display: none;">
                 <h2>Customize Your Scenario</h2>
                 <div class="scenario-inputs">
                     <div class="input-group">
@@ -186,7 +188,7 @@
             </div>
 
             <!-- Page 3: Persona Selection -->
-            <div class="page" id="page-3">
+            <div class="page" id="page-3" style="display: none;">
                 <h2>Select Your Interviewer</h2>
                 <div class="personas" id="personas-container">
                     <!-- Populated by JavaScript -->
@@ -206,7 +208,7 @@
             </div>
 
             <!-- Page 4: Final Preparation -->
-            <div class="page" id="page-4">
+            <div class="page" id="page-4" style="display: none;">
                 <h2>Final Preparation</h2>
                 <div style="text-align: center; padding: 2rem;">
                     <div id="scenario-summary">
@@ -237,12 +239,13 @@
             </div>
 
             <!-- Page 5: Training Interface -->
-            <div class="page" id="page-5">
+            <div class="page" id="page-5" style="display: none;">
                 <div class="training-interface">
                     <div class="training-header">
                         <div class="training-status">
                             <div class="status-item status-live">● TRAINING SESSION</div>
                             <div class="status-item status-voice" id="voice-status-indicator">🎤 VOICE ENABLED</div>
+                            <div class="status-item">⏱️ <span id="session-timer">0:00</span></div>
                         </div>
                         <h3 id="training-title">Training Session</h3>
                         <p id="persona-description"></p>
@@ -277,11 +280,28 @@
                         <button class="btn btn-secondary" onclick="endTraining()">End Session</button>
                         <button class="btn btn-secondary" onclick="goToPage(1)">New Session</button>
                     </div>
+                    
+                    <div class="keyboard-hint">
+                        💡 Tip: Press Ctrl+Space to toggle voice, Esc to end session
+                    </div>
+                </div>
+            </div>
+
+            <!-- Training History Page -->
+            <div class="page" id="history-page" style="display: none;">
+                <div style="padding: 2rem;">
+                    <h2>Your Training History</h2>
+                    <div id="history-container" style="margin-top: 2rem;">
+                        <!-- Sessions will be loaded here -->
+                    </div>
+                    <div class="navigation-buttons">
+                        <button class="btn btn-secondary" onclick="goToPage(1)">Back to Training</button>
+                    </div>
                 </div>
             </div>
 
             <!-- Feedback Page -->
-            <div class="page" id="feedback-page">
+            <div class="page" id="feedback-page" style="display: none;">
                 <div style="padding: 2rem;">
                     <h2>Session Feedback</h2>
                     
@@ -330,6 +350,7 @@
                     </div>
                 </div>
             </div>
+
         </div>
     </div>
 
