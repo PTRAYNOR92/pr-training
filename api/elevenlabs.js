@@ -1,36 +1,20 @@
+// SIMPLIFIED VERSION - Use this if you're having issues
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // These are the default voice IDs that should work with all ElevenLabs accounts
-    const voiceMap = {
-      'committee': '21m00Tcm4TlvDq8ikWAM', // Rachel - Clear, professional voice
-      'media': 'AZnzlk1XvdvUeBnXmlld', // Domi - Engaging, dynamic voice
-      'consultation': 'MF3mGyEYCl7XYWbV9V6O', // Elli - Warm, approachable voice
-      'interview': 'VR6AewLTigWG4xSOukaG', // Arnold - Professional, clear voice
-      'default': '21m00Tcm4TlvDq8ikWAM' // Rachel as fallback
-    };
+    // Use only Rachel voice - most reliable default voice
+    const voiceId = '21m00Tcm4TlvDq8ikWAM';
     
-    const scenario = req.body.scenario || 'default';
-    const voiceId = voiceMap[scenario] || voiceMap.default;
+    // Log for debugging
+    console.log('ElevenLabs request:', {
+      textLength: req.body.text?.length,
+      hasApiKey: !!process.env.ELEVENLABS_API_KEY
+    });
     
-    console.log('Using voice ID:', voiceId, 'for scenario:', scenario);
-    
-    // Simplified voice settings for better compatibility
-    const voiceSettings = {
-      stability: 0.7,
-      similarity_boost: 0.7
-    };
-    
-    // Use the standard model for better compatibility
-    const modelId = 'eleven_monolingual_v1';
-    
-    const apiUrl = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
-    console.log('Calling ElevenLabs API:', apiUrl);
-    
-    const response = await fetch(apiUrl, {
+    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
       method: 'POST',
       headers: {
         'Accept': 'audio/mpeg',
@@ -39,38 +23,51 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         text: req.body.text,
-        model_id: modelId,
-        voice_settings: voiceSettings
+        model_id: 'eleven_monolingual_v1',
+        voice_settings: {
+          stability: 0.75,
+          similarity_boost: 0.75
+        }
       })
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('ElevenLabs API error:', response.status, errorText);
+      console.error('ElevenLabs error:', response.status, errorText);
       
-      // Check if it's an API key issue
+      // Provide specific error messages
       if (response.status === 401) {
-        return res.status(401).json({ error: 'Invalid API key. Please check your ElevenLabs API key.' });
+        return res.status(401).json({ 
+          error: 'API Key Error',
+          message: 'Invalid or missing ELEVENLABS_API_KEY. Please check your Vercel environment variables.'
+        });
+      } else if (response.status === 422) {
+        return res.status(422).json({ 
+          error: 'Invalid Request',
+          message: 'The voice ID or request format is invalid.'
+        });
+      } else if (response.status === 429) {
+        return res.status(429).json({ 
+          error: 'Rate Limited',
+          message: 'You have exceeded your ElevenLabs character limit. The app will use browser voice.'
+        });
       }
       
-      // Return a more helpful error message
       return res.status(response.status).json({ 
-        error: 'ElevenLabs API error', 
-        details: errorText,
-        voiceId: voiceId 
+        error: 'ElevenLabs API Error',
+        message: errorText
       });
     }
 
     const audioBuffer = await response.arrayBuffer();
     res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('Content-Length', audioBuffer.byteLength);
-    res.status(200).send(Buffer.from(audioBuffer));
+    res.send(Buffer.from(audioBuffer));
+    
   } catch (error) {
-    console.error('ElevenLabs handler error:', error);
+    console.error('Server error:', error);
     res.status(500).json({ 
-      error: 'Failed to call ElevenLabs', 
-      details: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      error: 'Server Error',
+      message: error.message 
     });
   }
 }
