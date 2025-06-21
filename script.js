@@ -213,6 +213,7 @@ function resetApplicationState() {
     traitValues = {};
     conversationHistory = [];
     isRecording = false;
+    useElevenLabs = true; // Reset voice preference
     
     // Reset UI
     document.body.className = '';
@@ -299,6 +300,14 @@ function resetForNewSession() {
     traitValues = {};
     conversationHistory = [];
     sessionRating = 0;
+    
+    // Reset voice settings
+    useElevenLabs = true;
+    const indicator = document.getElementById('voice-status-indicator');
+    if (indicator) {
+        indicator.textContent = '🎤 VOICE ENABLED';
+        indicator.style.background = '#28a745';
+    }
     
     // Reset UI elements
     document.body.className = '';
@@ -572,13 +581,20 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load available voices for fallback TTS
     if ('speechSynthesis' in window) {
-        // Chrome loads voices asynchronously
-        speechSynthesis.addEventListener('voiceschanged', () => {
+        // Function to log available voices
+        const logVoices = () => {
             const voices = speechSynthesis.getVoices();
             console.log(`Loaded ${voices.length} TTS voices`);
-        });
+            const britishVoices = voices.filter(v => v.lang.includes('GB'));
+            console.log(`Found ${britishVoices.length} British voices:`, britishVoices.map(v => v.name));
+        };
+        
+        // Chrome loads voices asynchronously
+        speechSynthesis.addEventListener('voiceschanged', logVoices);
         // Trigger initial voice load
         speechSynthesis.getVoices();
+        // Also try loading after a delay
+        setTimeout(() => speechSynthesis.getVoices(), 100);
     }
     
     // Ensure login page is shown initially
@@ -937,6 +953,13 @@ function beginTrainingSession() {
     // Reset ElevenLabs flag for new session
     useElevenLabs = true;
     
+    // Reset voice indicator
+    const indicator = document.getElementById('voice-status-indicator');
+    if (indicator) {
+        indicator.textContent = '🎤 VOICE ENABLED';
+        indicator.style.background = '#28a745';
+    }
+    
     goToPage(5);
     updateStep(5);
     
@@ -1187,19 +1210,19 @@ async function speakResponse(text) {
     // Try ElevenLabs first if enabled
     if (useElevenLabs) {
         try {
-            // Add natural pauses by replacing certain punctuation
+            // More subtle pauses for natural British speech
             const naturalText = text
-                .replace(/\. /g, '... ') // Add pauses after sentences
-                .replace(/\? /g, '?... ') // Add pauses after questions
-                .replace(/, /g, ',. '); // Small pauses after commas
+                .replace(/\. /g, '.. ') // Shorter pauses after sentences
+                .replace(/\? /g, '?. ') // Brief pause after questions
+                .replace(/: /g, ':. '); // Small pause after colons
             
             // Adjust voice settings based on interviewer intensity
             const intensity = Object.values(traitValues).reduce((a, b) => a + b, 0) / Object.keys(traitValues).length;
             
             const voiceSettings = {
-                stability: intensity > 7 ? 0.65 : 0.75, // More variation for aggressive interviewers
-                similarity_boost: 0.85,
-                style: intensity > 7 ? 0.5 : 0.3, // More expressive for intense interviews
+                stability: intensity > 7 ? 0.55 : 0.65, // More natural variation
+                similarity_boost: 0.75, // Balanced for British accents
+                style: intensity > 7 ? 0.6 : 0.4, // More expressive
                 use_speaker_boost: true
             };
             
@@ -1212,7 +1235,7 @@ async function speakResponse(text) {
                 body: JSON.stringify({
                     text: naturalText,
                     scenario: selectedScenario, // Pass scenario for voice selection
-                    model_id: 'eleven_multilingual_v2',
+                    model_id: 'eleven_turbo_v2', // Turbo model for better quality
                     voice_settings: voiceSettings
                 })
             });
@@ -1222,8 +1245,9 @@ async function speakResponse(text) {
                 const audioUrl = URL.createObjectURL(audioBlob);
                 const audio = new Audio(audioUrl);
                 
-                // Set volume slightly lower for more comfortable listening
-                audio.volume = 0.85;
+                // Set volume and playback rate
+                audio.volume = 0.9;
+                audio.playbackRate = 1.05; // Slightly faster for more natural British speech
                 
                 // Add error handling for audio playback
                 audio.onerror = (e) => {
@@ -1240,6 +1264,12 @@ async function speakResponse(text) {
                     playPromise
                         .then(() => {
                             console.log('Audio playing successfully');
+                            // Reset voice indicator to show ElevenLabs is working
+                            const indicator = document.getElementById('voice-status-indicator');
+                            if (indicator) {
+                                indicator.textContent = '🎤 VOICE ENABLED';
+                                indicator.style.background = '#28a745';
+                            }
                         })
                         .catch(error => {
                             console.error('Audio play failed:', error);
@@ -1287,22 +1317,37 @@ function speakWithBrowserTTS(text) {
         
         const utterance = new SpeechSynthesisUtterance(text);
         
-        // Select appropriate voice based on scenario
+        // Get available voices and prioritize British ones
         const voices = speechSynthesis.getVoices();
-        const britishVoices = voices.filter(voice => voice.lang.includes('en-GB'));
-        const americanVoices = voices.filter(voice => voice.lang.includes('en-US'));
         
-        // Use British voice for committee/media, American for others
-        if (selectedScenario === 'committee' || selectedScenario === 'media') {
-            if (britishVoices.length > 0) {
-                utterance.voice = britishVoices[0];
-            }
-        } else if (americanVoices.length > 0) {
-            utterance.voice = americanVoices[0];
+        // Look for British voices first
+        const britishVoices = voices.filter(voice => 
+            voice.lang.includes('en-GB') || 
+            voice.lang.includes('en_GB') ||
+            voice.name.toLowerCase().includes('british') ||
+            voice.name.toLowerCase().includes('uk')
+        );
+        
+        // Fallback to any English voice if no British found
+        const englishVoices = voices.filter(voice => voice.lang.startsWith('en'));
+        
+        // Select the best available voice
+        if (britishVoices.length > 0) {
+            // Prefer Google UK voices or Microsoft voices which tend to sound better
+            const preferredBritish = britishVoices.find(voice => 
+                voice.name.includes('Google UK') || 
+                voice.name.includes('Microsoft') ||
+                voice.name.includes('Emma')
+            );
+            utterance.voice = preferredBritish || britishVoices[0];
+            console.log('Using British voice:', utterance.voice.name);
+        } else if (englishVoices.length > 0) {
+            utterance.voice = englishVoices[0];
+            console.log('Using English voice (no British found):', utterance.voice.name);
         }
         
-        // Adjust speech parameters for more natural sound
-        utterance.rate = 0.95; // Slightly slower for clarity
+        // Adjust speech parameters for more natural British sound
+        utterance.rate = 1.1; // Slightly faster for natural British speech
         utterance.pitch = 1.0;
         utterance.volume = 0.9;
         
@@ -1386,6 +1431,34 @@ function testPersonaMapping() {
     return passedTests === totalTests;
 }
 
+// Test voice functionality
+function testVoices() {
+    console.log('🔊 Testing Voice System...');
+    
+    // Test ElevenLabs for each scenario
+    const scenarios = ['committee', 'media', 'consultation', 'interview'];
+    console.log('Testing ElevenLabs voices for scenarios:', scenarios);
+    
+    // Test browser TTS
+    if ('speechSynthesis' in window) {
+        const voices = speechSynthesis.getVoices();
+        const britishVoices = voices.filter(v => 
+            v.lang.includes('en-GB') || 
+            v.lang.includes('en_GB') ||
+            v.name.toLowerCase().includes('british') ||
+            v.name.toLowerCase().includes('uk')
+        );
+        
+        console.log(`Browser TTS: Found ${britishVoices.length} British voices`);
+        britishVoices.forEach(v => {
+            console.log(`- ${v.name} (${v.lang})`);
+        });
+    }
+    
+    // You can test a specific voice by calling:
+    // speakResponse("Hello, this is a test of the voice system.");
+}
+
 // Global functions for onclick handlers
 window.goToPage = goToPage;
 window.selectScenario = selectScenario;
@@ -1396,6 +1469,7 @@ window.handleKeyPress = handleKeyPress;
 window.sendMessage = sendMessage;
 window.toggleVoiceRecognition = toggleVoiceRecognition;
 window.testPersonaMapping = testPersonaMapping;
+window.testVoices = testVoices;
 
 // Firebase Auth functions (make global)
 window.signInWithGoogle = signInWithGoogle;
