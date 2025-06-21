@@ -26,23 +26,71 @@ let useElevenLabs = true;
 let sessionStartTime = null;
 let sessionTimer = null;
 
-// Firebase Authentication Functions
-auth.onAuthStateChanged(function(user) {
-    console.log('🔥 Auth state changed:', user ? 'LOGGED IN' : 'LOGGED OUT');
-    if (user) {
-        currentUser = user;
-        console.log('✅ User logged in:', user.email);
-        showLoggedInState();
-        if (document.getElementById('login-page').classList.contains('active')) {
-            console.log('📱 Redirecting to main app...');
-            goToPage(1);
-        }
-    } else {
-        currentUser = null;
-        console.log('❌ User logged out');
-        showLoginPage();
-    }
+// DOM Ready Flag
+let isDOMReady = false;
+
+// Wait for DOM to be ready
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('✅ DOM is ready!');
+    isDOMReady = true;
+    
+    // Initialize everything
+    initializeApp();
 });
+
+// Initialize Firebase Auth AFTER DOM is ready
+function initializeApp() {
+    // Initialize voice recognition
+    initializeVoiceRecognition();
+    
+    // Setup event listeners
+    setupEventListeners();
+    
+    // Load voices for TTS
+    if ('speechSynthesis' in window) {
+        const logVoices = () => {
+            const voices = speechSynthesis.getVoices();
+            console.log(`Loaded ${voices.length} TTS voices`);
+            const britishVoices = voices.filter(v => v.lang.includes('GB'));
+            console.log(`Found ${britishVoices.length} British voices:`, britishVoices.map(v => v.name));
+        };
+        
+        speechSynthesis.addEventListener('voiceschanged', logVoices);
+        speechSynthesis.getVoices();
+        setTimeout(() => speechSynthesis.getVoices(), 100);
+    }
+    
+    // NOW set up Firebase auth listener
+    auth.onAuthStateChanged(function(user) {
+        console.log('🔥 Auth state changed:', user ? 'LOGGED IN' : 'LOGGED OUT');
+        
+        // Make sure DOM is ready before doing anything
+        if (!isDOMReady) {
+            console.log('⏳ Waiting for DOM...');
+            setTimeout(() => auth.onAuthStateChanged(arguments.callee), 100);
+            return;
+        }
+        
+        if (user) {
+            currentUser = user;
+            console.log('✅ User logged in:', user.email);
+            showLoggedInState();
+            
+            // Check if we're on login page
+            const loginPage = document.getElementById('login-page');
+            if (loginPage && loginPage.style.display !== 'none') {
+                console.log('📱 Redirecting to main app...');
+                goToPage(1);
+            }
+        } else {
+            currentUser = null;
+            console.log('❌ User logged out');
+            showLoginPage();
+        }
+    });
+    
+    console.log('🔥 App initialization complete');
+}
 
 function checkFormFields() {
     const email = document.getElementById('email').value.trim();
@@ -69,33 +117,79 @@ function checkFormFields() {
 }
 
 function showLoginPage() {
-    document.querySelectorAll('.page').forEach(page => {
-        page.classList.remove('active');
+    console.log('🔄 Showing login page...');
+    
+    // Hide all pages
+    const pages = document.querySelectorAll('.page');
+    pages.forEach(page => {
+        if (page) page.style.display = 'none';
     });
-    document.getElementById('login-page').classList.add('active');
-    document.getElementById('logout-link').style.display = 'none';
-    document.getElementById('history-link').style.display = 'none';
-    const stepIndicator = document.querySelector('.step-indicator');
-    if (stepIndicator) {
-        stepIndicator.style.display = 'none';
+    
+    // Show login page
+    const loginPage = document.getElementById('login-page');
+    if (loginPage) {
+        loginPage.style.display = 'block';
+    } else {
+        console.error('❌ Login page not found!');
     }
+    
+    // Hide navigation elements
+    const logoutLink = document.getElementById('logout-link');
+    if (logoutLink) logoutLink.style.display = 'none';
+    
+    const historyLink = document.getElementById('history-link');
+    if (historyLink) historyLink.style.display = 'none';
+    
+    // Hide step indicator
+    const stepIndicator = document.getElementById('step-indicator');
+    if (stepIndicator) stepIndicator.style.display = 'none';
 }
 
 function showLoggedInState() {
-    document.getElementById('logout-link').style.display = 'block';
-    document.getElementById('history-link').style.display = 'block';
+    console.log('🔄 Showing logged in state...');
+    
+    // Show navigation elements
+    const logoutLink = document.getElementById('logout-link');
+    if (logoutLink) {
+        logoutLink.style.display = 'block';
+    } else {
+        console.warn('⚠️ Logout link not found');
+    }
+    
+    const historyLink = document.getElementById('history-link');
+    if (historyLink) {
+        historyLink.style.display = 'block';
+    } else {
+        console.warn('⚠️ History link not found');
+    }
 }
 
 function signInWithGoogle() {
+    console.log('🔵 Attempting Google sign-in...');
     showAuthMessage('Signing in with Google...', 'success');
+    
     auth.signInWithPopup(googleProvider)
         .then((result) => {
-            console.log('Google sign-in successful');
+            console.log('✅ Google sign-in successful:', result);
             showAuthMessage('Welcome! Redirecting to training...', 'success');
         })
         .catch((error) => {
-            console.error('Google sign-in error:', error);
-            showAuthError(error.message);
+            console.error('❌ Google sign-in error:', error);
+            console.error('Error code:', error.code);
+            console.error('Error message:', error.message);
+            
+            // More specific error messages
+            if (error.code === 'auth/popup-blocked') {
+                showAuthError('Please allow popups for this site to sign in with Google');
+            } else if (error.code === 'auth/cancelled-popup-request') {
+                showAuthError('Sign-in cancelled. Please try again.');
+            } else if (error.code === 'auth/popup-closed-by-user') {
+                showAuthError('Sign-in window was closed. Please try again.');
+            } else if (error.code === 'auth/unauthorized-domain') {
+                showAuthError('This domain is not authorized for Google sign-in. Please check Firebase console.');
+            } else {
+                showAuthError(error.message || 'Google sign-in failed. Please try again.');
+            }
         });
 }
 
@@ -103,19 +197,23 @@ function signInWithEmail() {
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value.trim();
     
+    console.log('📧 Attempting email sign-in for:', email);
+    
     if (!email || !password) {
         showAuthError('Please enter both email and password to sign in');
         return;
     }
     
     showAuthMessage('Signing in...', 'success');
+    
     auth.signInWithEmailAndPassword(email, password)
         .then((result) => {
-            console.log('Email sign-in successful');
+            console.log('✅ Email sign-in successful:', result);
             showAuthMessage('Welcome back! Redirecting...', 'success');
         })
         .catch((error) => {
-            console.error('Email sign-in error:', error);
+            console.error('❌ Email sign-in error:', error);
+            console.error('Error code:', error.code);
             showAuthError(getErrorMessage(error.code));
         });
 }
@@ -158,24 +256,28 @@ function signOut() {
 function showAuthError(message) {
     const errorDiv = document.getElementById('auth-error');
     const successDiv = document.getElementById('auth-success');
-    successDiv.style.display = 'none';
-    errorDiv.textContent = message;
-    errorDiv.style.display = 'block';
-    setTimeout(() => {
-        errorDiv.style.display = 'none';
-    }, 5000);
+    if (successDiv) successDiv.style.display = 'none';
+    if (errorDiv) {
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+        setTimeout(() => {
+            errorDiv.style.display = 'none';
+        }, 5000);
+    }
 }
 
 function showAuthMessage(message, type) {
     const errorDiv = document.getElementById('auth-error');
     const successDiv = document.getElementById('auth-success');
-    errorDiv.style.display = 'none';
-    successDiv.textContent = message;
-    successDiv.style.display = 'block';
-    if (type === 'success') {
-        setTimeout(() => {
-            successDiv.style.display = 'none';
-        }, 3000);
+    if (errorDiv) errorDiv.style.display = 'none';
+    if (successDiv) {
+        successDiv.textContent = message;
+        successDiv.style.display = 'block';
+        if (type === 'success') {
+            setTimeout(() => {
+                successDiv.style.display = 'none';
+            }, 3000);
+        }
     }
 }
 
@@ -185,6 +287,8 @@ function getErrorMessage(errorCode) {
             return 'No account found with this email address.';
         case 'auth/wrong-password':
             return 'Incorrect password.';
+        case 'auth/invalid-credential':
+            return 'Invalid email or password. Please check and try again.';
         case 'auth/email-already-in-use':
             return 'An account with this email already exists.';
         case 'auth/weak-password':
@@ -298,7 +402,7 @@ function showFeedbackSuccess() {
     feedbackPage.insertBefore(successMessage, feedbackPage.firstChild);
     
     setTimeout(() => {
-        const stepIndicator = document.querySelector('.step-indicator');
+        const stepIndicator = document.getElementById('step-indicator');
         if (stepIndicator) {
             stepIndicator.style.display = 'flex';
         }
@@ -414,14 +518,23 @@ function autoSaveProgress() {
 
 // History page functions
 function showHistory() {
-    document.querySelectorAll('.page').forEach(page => {
-        page.classList.remove('active');
+    // Hide all pages
+    const pages = document.querySelectorAll('.page');
+    pages.forEach(page => {
+        if (page) page.style.display = 'none';
     });
-    document.getElementById('history-page').classList.add('active');
-    const stepIndicator = document.querySelector('.step-indicator');
+    
+    // Show history page
+    const historyPage = document.getElementById('history-page');
+    if (historyPage) {
+        historyPage.style.display = 'block';
+    }
+    
+    const stepIndicator = document.getElementById('step-indicator');
     if (stepIndicator) {
         stepIndicator.style.display = 'none';
     }
+    
     loadTrainingHistory();
 }
 
@@ -690,28 +803,6 @@ const systemPrompts = {
     'interview-supportive-developer': 'Focus on potential and growth mindset over perfect answers. Ask about learning experiences, how they handle failure, what they want to develop. Probe for curiosity, adaptability, and genuine enthusiasm for growth using supportive but thorough questioning techniques. Build on their examples positively while still challenging them. Keep responses to 1-2 sentences maximum.'
 };
 
-// Initialize the application
-document.addEventListener('DOMContentLoaded', function() {
-    initializeVoiceRecognition();
-    setupEventListeners();
-    
-    if ('speechSynthesis' in window) {
-        const logVoices = () => {
-            const voices = speechSynthesis.getVoices();
-            console.log(`Loaded ${voices.length} TTS voices`);
-            const britishVoices = voices.filter(v => v.lang.includes('GB'));
-            console.log(`Found ${britishVoices.length} British voices:`, britishVoices.map(v => v.name));
-        };
-        
-        speechSynthesis.addEventListener('voiceschanged', logVoices);
-        speechSynthesis.getVoices();
-        setTimeout(() => speechSynthesis.getVoices(), 100);
-    }
-    
-    console.log('🔥 App loaded - waiting for Firebase auth...');
-    showLoginPage();
-});
-
 // Keyboard shortcuts
 document.addEventListener('keydown', function(e) {
     if (currentPage !== 5) return;
@@ -799,24 +890,45 @@ function selectScenario(scenario) {
 }
 
 function goToPage(pageNumber) {
-    document.querySelectorAll('.page').forEach(page => {
-        page.classList.remove('active');
-    });
-    document.getElementById('feedback-page').classList.remove('active');
+    console.log(`📄 Going to page ${pageNumber}`);
     
-    const stepIndicator = document.querySelector('.step-indicator');
-    if (stepIndicator) {
-        stepIndicator.style.display = 'flex';
+    // Wait for DOM if not ready
+    if (!isDOMReady) {
+        console.log('⏳ DOM not ready, waiting...');
+        setTimeout(() => goToPage(pageNumber), 100);
+        return;
     }
     
+    // Hide all pages
+    const pages = document.querySelectorAll('.page');
+    pages.forEach(page => {
+        if (page) page.style.display = 'none';
+    });
+    
+    // Show target page
     const targetPage = document.getElementById(`page-${pageNumber}`);
     if (targetPage) {
-        targetPage.classList.add('active');
+        targetPage.style.display = 'block';
+        console.log(`✅ Showing page ${pageNumber}`);
+    } else {
+        console.error(`❌ Page ${pageNumber} not found!`);
+        return;
     }
-    currentPage = pageNumber;
     
+    // Show step indicator for training pages
+    const stepIndicator = document.getElementById('step-indicator');
+    if (stepIndicator) {
+        if (pageNumber >= 1 && pageNumber <= 5) {
+            stepIndicator.style.display = 'flex';
+        } else {
+            stepIndicator.style.display = 'none';
+        }
+    }
+    
+    currentPage = pageNumber;
     updateStep(pageNumber);
     
+    // Special handling for specific pages
     if (pageNumber === 3) {
         loadPersonas();
         setupFileUploadListeners();
@@ -1458,19 +1570,38 @@ function endTraining() {
     if (confirm('Are you sure you want to end this training session?')) {
         stopSessionTimer();
         
-        document.querySelectorAll('.page').forEach(page => {
-            page.classList.remove('active');
+        // Hide all pages
+        const pages = document.querySelectorAll('.page');
+        pages.forEach(page => {
+            if (page) page.style.display = 'none';
         });
         
-        document.getElementById('feedback-page').classList.add('active');
+        // Show feedback page
+        const feedbackPage = document.getElementById('feedback-page');
+        if (feedbackPage) {
+            feedbackPage.style.display = 'block';
+        }
         
-        const stepIndicator = document.querySelector('.step-indicator');
+        // Hide step indicator
+        const stepIndicator = document.getElementById('step-indicator');
         if (stepIndicator) {
             stepIndicator.style.display = 'none';
         }
         
         updateVoiceStatus('ready', 'Session ended');
     }
+}
+
+// Helper function to debug page visibility
+function debugPageVisibility() {
+    console.log('🔍 Page Visibility Debug:');
+    const pages = document.querySelectorAll('.page');
+    pages.forEach(page => {
+        console.log(`${page.id}: ${page.style.display || 'default'}`);
+    });
+    
+    const stepIndicator = document.getElementById('step-indicator');
+    console.log(`Step Indicator: ${stepIndicator ? stepIndicator.style.display : 'not found'}`);
 }
 
 // Global functions for onclick handlers
@@ -1490,3 +1621,4 @@ window.checkFormFields = checkFormFields;
 window.setRating = setRating;
 window.submitFeedback = submitFeedback;
 window.showHistory = showHistory;
+window.debugPageVisibility = debugPageVisibility;
