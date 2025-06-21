@@ -11,10 +11,8 @@ let userRole = '';
 let companyContext = '';
 let policyFiles = [];
 let briefingFiles = [];
-// NEW: Store extracted text content
-let policyTexts = [];
-let briefingTexts = [];
 let traitValues = {};
+// API keys are now securely stored on Vercel - no longer needed here
 
 // NEW: Conversation memory
 let conversationHistory = [];
@@ -23,79 +21,9 @@ let isRecording = false;
 // Voice recognition variables
 let recognition = null;
 let speechSynthesis = window.speechSynthesis;
+let useElevenLabs = true; // Flag to track if we should use ElevenLabs
 
-// FIXED: PDF.js setup - using traditional approach
-let pdfJsReady = false;
-
-// UPDATED: Initialize PDF.js with working CDN (traditional script loading)
-function initializePDFJS() {
-    // Check if PDF.js is already loaded (from script tag in HTML)
-    if (typeof pdfjsLib !== 'undefined') {
-        // Set worker source to CDN
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-        pdfJsReady = true;
-        console.log('✅ PDF.js loaded and configured successfully');
-    } else {
-        // Load PDF.js dynamically if not already loaded
-        const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js';
-        script.onload = () => {
-            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-            pdfJsReady = true;
-            console.log('✅ PDF.js loaded dynamically and configured');
-        };
-        script.onerror = () => {
-            console.error('❌ Failed to load PDF.js from CDN');
-        };
-        document.head.appendChild(script);
-    }
-}
-
-// UPDATED: PDF text extraction function with working API
-async function extractPDFText(file) {
-    if (!pdfJsReady) {
-        throw new Error('PDF.js not ready. Please wait for initialization.');
-    }
-    
-    try {
-        console.log(`📄 Starting extraction for: ${file.name}`);
-        
-        const arrayBuffer = await file.arrayBuffer();
-        console.log(`📄 File read: ${arrayBuffer.byteLength} bytes`);
-        
-        // FIXED: Use correct API call
-        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-        console.log(`📄 PDF loaded: ${pdf.numPages} pages`);
-        
-        let fullText = '';
-        
-        // Process each page
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-            console.log(`📄 Processing page ${pageNum}/${pdf.numPages}`);
-            
-            const page = await pdf.getPage(pageNum);
-            const textContent = await page.getTextContent();
-            
-            // Extract text from items array
-            const pageText = textContent.items
-                .map(item => item.str)
-                .join(' ');
-            
-            fullText += pageText + '\n\n';
-        }
-        
-        // Clean up the text
-        fullText = fullText.replace(/\s+/g, ' ').trim();
-        
-        console.log(`✅ Extraction complete: ${fullText.length} characters from ${file.name}`);
-        return fullText;
-    } catch (error) {
-        console.error(`❌ Error extracting text from ${file.name}:`, error);
-        throw error;
-    }
-}
-
-// Firebase Authentication Functions (unchanged)
+// Firebase Authentication Functions
 auth.onAuthStateChanged(function(user) {
     console.log('🔥 Auth state changed:', user ? 'LOGGED IN' : 'LOGGED OUT');
     if (user) {
@@ -282,8 +210,6 @@ function resetApplicationState() {
     companyContext = '';
     policyFiles = [];
     briefingFiles = [];
-    policyTexts = [];
-    briefingTexts = [];
     traitValues = {};
     conversationHistory = [];
     isRecording = false;
@@ -305,7 +231,7 @@ function resetApplicationState() {
     });
 }
 
-// Feedback System Functions (unchanged)
+// Feedback System Functions
 function setRating(rating) {
     sessionRating = rating;
     const stars = document.querySelectorAll('.star');
@@ -370,8 +296,6 @@ function resetForNewSession() {
     companyContext = '';
     policyFiles = [];
     briefingFiles = [];
-    policyTexts = [];
-    briefingTexts = [];
     traitValues = {};
     conversationHistory = [];
     sessionRating = 0;
@@ -641,11 +565,21 @@ const systemPrompts = {
     'interview-supportive-developer': 'Focus on potential and growth mindset over perfect answers. Ask about learning experiences, how they handle failure, what they want to develop. Probe for curiosity, adaptability, and genuine enthusiasm for growth using supportive but thorough questioning techniques. Build on their examples positively while still challenging them. Keep responses to 1-2 sentences maximum.'
 };
 
-// UPDATED: Initialize the application with working PDF.js
+// Initialize the application (modified for Firebase)
 document.addEventListener('DOMContentLoaded', function() {
-    initializePDFJS(); // Initialize with working PDF.js
     initializeVoiceRecognition();
     setupEventListeners();
+    
+    // Load available voices for fallback TTS
+    if ('speechSynthesis' in window) {
+        // Chrome loads voices asynchronously
+        speechSynthesis.addEventListener('voiceschanged', () => {
+            const voices = speechSynthesis.getVoices();
+            console.log(`Loaded ${voices.length} TTS voices`);
+        });
+        // Trigger initial voice load
+        speechSynthesis.getVoices();
+    }
     
     // Ensure login page is shown initially
     console.log('🔥 App loaded - waiting for Firebase auth...');
@@ -877,78 +811,15 @@ function loadTraitSliders() {
     });
 }
 
-// UPDATED: Enhanced file upload with working PDF text extraction
-async function handleFileUpload(event, type) {
+function handleFileUpload(event, type) {
     const files = Array.from(event.target.files);
     
     if (type === 'policy') {
         policyFiles = files;
-        policyTexts = [];
         displayFiles(files, 'policy-files');
-        await extractTextsFromFiles(files, 'policy');
     } else if (type === 'briefing') {
         briefingFiles = files;
-        briefingTexts = [];
         displayFiles(files, 'briefing-files');
-        await extractTextsFromFiles(files, 'briefing');
-    }
-}
-
-// UPDATED: Extract text from uploaded files with working PDF.js
-async function extractTextsFromFiles(files, type) {
-    const container = document.getElementById(`${type}-files`);
-    if (!container) return;
-    
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const fileDiv = container.children[i];
-        
-        if (file.type === 'application/pdf') {
-            try {
-                // Show processing status
-                fileDiv.innerHTML = `📄 ${file.name} <span style="color: #ffc107;">⏳ Extracting text...</span>`;
-                
-                // Wait for PDF.js to be ready
-                if (!pdfJsReady) {
-                    fileDiv.innerHTML = `📄 ${file.name} <span style="color: #ffc107;">⏳ Waiting for PDF.js...</span>`;
-                    // Wait up to 5 seconds for PDF.js to load
-                    let attempts = 0;
-                    while (!pdfJsReady && attempts < 50) {
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                        attempts++;
-                    }
-                    if (!pdfJsReady) {
-                        throw new Error('PDF.js failed to load');
-                    }
-                }
-                
-                const extractedText = await extractPDFText(file);
-                
-                // Store the extracted text
-                if (type === 'policy') {
-                    policyTexts.push({
-                        filename: file.name,
-                        content: extractedText
-                    });
-                } else if (type === 'briefing') {
-                    briefingTexts.push({
-                        filename: file.name,
-                        content: extractedText
-                    });
-                }
-                
-                // Update display with success
-                const wordCount = extractedText.split(' ').length;
-                fileDiv.innerHTML = `📄 ${file.name} <span style="color: #28a745;">✅ ${wordCount} words extracted</span>`;
-                
-            } catch (error) {
-                console.error(`Failed to extract text from ${file.name}:`, error);
-                fileDiv.innerHTML = `📄 ${file.name} <span style="color: #dc3545;">❌ Text extraction failed: ${error.message}</span>`;
-            }
-        } else {
-            // Non-PDF files - just show filename
-            fileDiv.innerHTML = `📄 ${file.name} <span style="color: #666; font-size: 0.9rem;">(${(file.size/1024).toFixed(1)} KB) - Text files supported</span>`;
-        }
     }
 }
 
@@ -1043,6 +914,8 @@ function updateVoiceStatus(status, message) {
     }
 }
 
+// Removed saveApiKeys function - API keys are now embedded
+
 function startTraining() {
     // Capture all form data
     const descInput = document.getElementById('scenario-description');
@@ -1060,6 +933,9 @@ function startTraining() {
 function beginTrainingSession() {
     // Reset conversation history for new session
     conversationHistory = [];
+    
+    // Reset ElevenLabs flag for new session
+    useElevenLabs = true;
     
     goToPage(5);
     updateStep(5);
@@ -1149,6 +1025,7 @@ async function sendMessage() {
         addMessage(response, 'interviewer');
         
         // Convert response to speech using your secure API
+        console.log('🔊 Attempting to speak response:', response.substring(0, 50) + '...');
         await speakResponse(response);
         
         updateVoiceStatus('ready', 'Ready for voice input');
@@ -1158,8 +1035,8 @@ async function sendMessage() {
             typingElement.remove();
         }
         
-        addMessage('Sorry, there was an error. Please check your API keys and try again.', 'interviewer');
-        console.error('Error:', error);
+        addMessage('Sorry, there was an error. Please check your connection and try again.', 'interviewer');
+        console.error('Error in sendMessage:', error);
         updateVoiceStatus('error', 'Error occurred');
     }
 }
@@ -1181,7 +1058,7 @@ function addMessage(message, sender) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// UPDATED: AI Response function - now includes extracted PDF content
+// Updated AI Response function - now calls your secure Vercel API
 async function getAIResponse(userMessage) {
     // Fixed persona mapping with debugging
     const personaKey = `${selectedScenario}-${selectedPersona}`;
@@ -1246,44 +1123,23 @@ async function getAIResponse(userMessage) {
         });
     }
     
-    // UPDATED: Add extracted document content
-    let documentContext = '';
-    if (policyTexts.length > 0 || briefingTexts.length > 0) {
-        documentContext += '\n\nDOCUMENT CONTENT:';
-        
-        // Add policy document content
-        if (policyTexts.length > 0) {
-            documentContext += '\n\nPolicy Documents:\n';
-            policyTexts.forEach(doc => {
-                // Truncate very long documents to avoid token limits
-                const truncatedContent = doc.content.length > 2000 
-                    ? doc.content.substring(0, 2000) + '...[truncated]'
-                    : doc.content;
-                documentContext += `\n"${doc.filename}":\n${truncatedContent}\n`;
-            });
+    // Add document context
+    let contextualInfo = '';
+    if (policyFiles.length > 0 || briefingFiles.length > 0) {
+        contextualInfo += '\n\nDocument Context:';
+        if (policyFiles.length > 0) {
+            contextualInfo += `\nRelevant Documents: ${policyFiles.map(f => f.name).join(', ')}`;
         }
-        
-        // Add briefing document content
-        if (briefingTexts.length > 0) {
-            documentContext += '\n\nBriefing Materials:\n';
-            briefingTexts.forEach(doc => {
-                // Truncate very long documents to avoid token limits
-                const truncatedContent = doc.content.length > 2000 
-                    ? doc.content.substring(0, 2000) + '...[truncated]'
-                    : doc.content;
-                documentContext += `\n"${doc.filename}":\n${truncatedContent}\n`;
-            });
+        if (briefingFiles.length > 0) {
+            contextualInfo += `\nBriefing Materials: ${briefingFiles.map(f => f.name).join(', ')}`;
         }
-        
-        documentContext += '\n\nUSE THIS CONTENT: Reference specific details from these documents. Ask about implementation, contradictions, or gaps. Challenge them on specifics from the documents.\n';
     }
     
     // Combine all context
-    const fullPrompt = systemPrompt + conversationContext + traitInstructions + scenarioContext + documentContext + 
-        '\n\nIMPORTANT: Keep responses to 1-2 sentences maximum. Be conversational and human. Reference their previous answers and the document content. Stay in character.';
+    const fullPrompt = systemPrompt + conversationContext + traitInstructions + scenarioContext + contextualInfo + 
+        '\n\nIMPORTANT: Keep responses to 1-2 sentences maximum. Be conversational and human. Reference their previous answers. Stay in character.';
     
     console.log('📝 Final prompt preview:', fullPrompt.substring(0, 200) + '...');
-    console.log('📊 Document context length:', documentContext.length);
     
     try {
         // Call YOUR secure Vercel API instead of OpenAI directly
@@ -1328,40 +1184,141 @@ async function getAIResponse(userMessage) {
 async function speakResponse(text) {
     updateVoiceStatus('speaking', 'AI is speaking...');
     
-    try {
-        // Call YOUR secure Vercel API instead of ElevenLabs directly
-        const response = await fetch('/api/elevenlabs', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                text: text,
-                model_id: 'eleven_monolingual_v1',
-                voice_settings: {
-                    stability: 0.5,
-                    similarity_boost: 0.5
-                }
-            })
-        });
-        
-        if (response.ok) {
-            const audioBlob = await response.blob();
-            const audioUrl = URL.createObjectURL(audioBlob);
-            const audio = new Audio(audioUrl);
-            audio.play();
+    // Try ElevenLabs first if enabled
+    if (useElevenLabs) {
+        try {
+            // Add natural pauses by replacing certain punctuation
+            const naturalText = text
+                .replace(/\. /g, '... ') // Add pauses after sentences
+                .replace(/\? /g, '?... ') // Add pauses after questions
+                .replace(/, /g, ',. '); // Small pauses after commas
             
-            audio.onended = () => {
-                updateVoiceStatus('ready', 'Ready for voice input');
-                URL.revokeObjectURL(audioUrl);
+            // Adjust voice settings based on interviewer intensity
+            const intensity = Object.values(traitValues).reduce((a, b) => a + b, 0) / Object.keys(traitValues).length;
+            
+            const voiceSettings = {
+                stability: intensity > 7 ? 0.65 : 0.75, // More variation for aggressive interviewers
+                similarity_boost: 0.85,
+                style: intensity > 7 ? 0.5 : 0.3, // More expressive for intense interviews
+                use_speaker_boost: true
             };
-        } else {
-            console.error('ElevenLabs API error:', response.status);
-            updateVoiceStatus('ready', 'Ready for voice input');
+            
+            // Call YOUR secure Vercel API with scenario context
+            const response = await fetch('/api/elevenlabs', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    text: naturalText,
+                    scenario: selectedScenario, // Pass scenario for voice selection
+                    model_id: 'eleven_multilingual_v2',
+                    voice_settings: voiceSettings
+                })
+            });
+            
+            if (response.ok) {
+                const audioBlob = await response.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audio = new Audio(audioUrl);
+                
+                // Set volume slightly lower for more comfortable listening
+                audio.volume = 0.85;
+                
+                // Add error handling for audio playback
+                audio.onerror = (e) => {
+                    console.error('Audio playback error:', e);
+                    // Fall back to browser speech
+                    useElevenLabs = false;
+                    speakWithBrowserTTS(text);
+                };
+                
+                // Play the audio
+                const playPromise = audio.play();
+                
+                if (playPromise !== undefined) {
+                    playPromise
+                        .then(() => {
+                            console.log('Audio playing successfully');
+                        })
+                        .catch(error => {
+                            console.error('Audio play failed:', error);
+                            // Fall back to browser speech
+                            useElevenLabs = false;
+                            speakWithBrowserTTS(text);
+                        });
+                }
+                
+                audio.onended = () => {
+                    updateVoiceStatus('ready', 'Ready for voice input');
+                    URL.revokeObjectURL(audioUrl);
+                };
+                
+                return; // Success with ElevenLabs
+            } else {
+                console.error('ElevenLabs API error:', response.status);
+                const errorData = await response.json();
+                console.error('Error details:', errorData);
+                // Fall back to browser speech
+                useElevenLabs = false;
+            }
+        } catch (error) {
+            console.error('ElevenLabs error:', error);
+            // Fall back to browser speech
+            useElevenLabs = false;
         }
-    } catch (error) {
-        console.error('Speech synthesis error:', error);
-        updateVoiceStatus('ready', 'Ready for voice input');
+    }
+    
+    // Fallback to browser's built-in speech synthesis
+    speakWithBrowserTTS(text);
+}
+
+function speakWithBrowserTTS(text) {
+    // Update indicator to show we're using browser TTS
+    const indicator = document.getElementById('voice-status-indicator');
+    if (indicator) {
+        indicator.textContent = '🔊 BROWSER VOICE';
+        indicator.style.background = '#ffc107'; // Yellow to indicate fallback
+    }
+    
+    if ('speechSynthesis' in window) {
+        // Cancel any ongoing speech
+        speechSynthesis.cancel();
+        
+        const utterance = new SpeechSynthesisUtterance(text);
+        
+        // Select appropriate voice based on scenario
+        const voices = speechSynthesis.getVoices();
+        const britishVoices = voices.filter(voice => voice.lang.includes('en-GB'));
+        const americanVoices = voices.filter(voice => voice.lang.includes('en-US'));
+        
+        // Use British voice for committee/media, American for others
+        if (selectedScenario === 'committee' || selectedScenario === 'media') {
+            if (britishVoices.length > 0) {
+                utterance.voice = britishVoices[0];
+            }
+        } else if (americanVoices.length > 0) {
+            utterance.voice = americanVoices[0];
+        }
+        
+        // Adjust speech parameters for more natural sound
+        utterance.rate = 0.95; // Slightly slower for clarity
+        utterance.pitch = 1.0;
+        utterance.volume = 0.9;
+        
+        utterance.onend = () => {
+            updateVoiceStatus('ready', 'Ready for voice input');
+        };
+        
+        utterance.onerror = (event) => {
+            console.error('Browser TTS error:', event);
+            updateVoiceStatus('ready', 'Ready for voice input (voice unavailable)');
+        };
+        
+        speechSynthesis.speak(utterance);
+    } else {
+        console.warn('Speech synthesis not supported');
+        updateVoiceStatus('ready', 'Ready for voice input (voice unavailable)');
     }
 }
 
