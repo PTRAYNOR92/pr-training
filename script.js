@@ -41,6 +41,32 @@ auth.onAuthStateChanged(function(user) {
     }
 });
 
+function checkFormFields() {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value.trim();
+    
+    const signinBtn = document.getElementById('signin-btn');
+    const signupBtn = document.getElementById('signup-btn');
+    
+    if (email && password && password.length >= 6) {
+        // Enable buttons
+        signinBtn.disabled = false;
+        signupBtn.disabled = false;
+        signinBtn.style.opacity = '1';
+        signupBtn.style.opacity = '1';
+        signinBtn.style.cursor = 'pointer';
+        signupBtn.style.cursor = 'pointer';
+    } else {
+        // Disable buttons
+        signinBtn.disabled = true;
+        signupBtn.disabled = true;
+        signinBtn.style.opacity = '0.5';
+        signupBtn.style.opacity = '0.5';
+        signinBtn.style.cursor = 'not-allowed';
+        signupBtn.style.cursor = 'not-allowed';
+    }
+}
+
 function showLoginPage() {
     // Hide all pages
     document.querySelectorAll('.page').forEach(page => {
@@ -76,7 +102,7 @@ function signInWithEmail() {
     const password = document.getElementById('password').value.trim();
     
     if (!email || !password) {
-        showAuthError('Please enter both email and password');
+        showAuthError('Please enter both email and password to sign in');
         return;
     }
     
@@ -98,16 +124,16 @@ function signUpWithEmail() {
     const password = document.getElementById('password').value.trim();
     
     if (!email || !password) {
-        showAuthError('Please enter both email and password');
+        showAuthError('Please enter both email and password to create an account');
         return;
     }
     
     if (password.length < 6) {
-        showAuthError('Password must be at least 6 characters');
+        showAuthError('Password must be at least 6 characters long');
         return;
     }
     
-    showAuthMessage('Creating account...', 'success');
+    showAuthMessage('Creating your account...', 'success');
     auth.createUserWithEmailAndPassword(email, password)
         .then((result) => {
             console.log('Account created successfully');
@@ -1259,7 +1285,8 @@ window.signInWithGoogle = signInWithGoogle;
 window.signInWithEmail = signInWithEmail;
 window.signUpWithEmail = signUpWithEmail;
 window.signOut = signOut;
+window.checkFormFields = checkFormFields;
 
 // Feedback functions (make global)
 window.setRating = setRating;
-window.submitFeedback = submitFeedback;
+window.submitFeedback = submitFeedback;;
