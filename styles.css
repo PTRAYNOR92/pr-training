@@ -267,6 +267,51 @@ nav {
     font-size: 0.9rem;
 }
 
+/* NEW: Top Lines Styles */
+#top-lines-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.top-line-input {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.top-line {
+    flex: 1;
+    padding: 0.8rem;
+    border: 2px solid #667eea !important;
+    border-radius: 5px;
+    font-size: 1rem;
+    background: white;
+}
+
+.top-line:focus {
+    outline: none;
+    border-color: #5a67d8 !important;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Loading Spinner */
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 .personas {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -459,9 +504,8 @@ nav {
 }
 
 .btn:disabled {
-    background: #ccc !important;
-    cursor: not-allowed;
     opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .training-interface {
@@ -615,6 +659,39 @@ nav {
     cursor: pointer;
 }
 
+.api-key-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.api-key-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 15px;
+    max-width: 500px;
+    width: 90%;
+}
+
+.api-key-content h3 {
+    margin-bottom: 1rem;
+}
+
+.api-key-content input {
+    width: 100%;
+    padding: 0.8rem;
+    margin: 1rem 0;
+    border: 2px solid #e9ecef;
+    border-radius: 5px;
+}
+
 .voice-status {
     text-align: center;
     margin: 1rem 0;
@@ -633,110 +710,6 @@ nav {
     color: #17a2b8;
 }
 
-/* New styles for improvements */
-
-/* Session timer styling */
-.session-timer {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    background: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    font-weight: 600;
-    font-size: 0.9rem;
-}
-
-/* Improved feedback page styling */
-#feedback-page {
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    min-height: 100vh;
-}
-
-#feedback-page h2 {
-    text-align: center;
-    color: #333;
-    margin-bottom: 2rem;
-}
-
-/* Star rating hover effect */
-.star {
-    transition: all 0.2s ease;
-    cursor: pointer;
-}
-
-.star:hover {
-    transform: scale(1.2);
-}
-
-/* Success message animation */
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* History page styling */
-.sessions-list {
-    max-height: 600px;
-    overflow-y: auto;
-}
-
-.session-card {
-    transition: all 0.3s ease;
-}
-
-.session-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
-
-/* Improved voice status indicator */
-#voice-status-indicator {
-    transition: all 0.3s ease;
-}
-
-#voice-status-indicator.error {
-    background: #dc3545 !important;
-}
-
-/* Loading spinner for async operations */
-.loading-spinner {
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    border: 3px solid #f3f3f3;
-    border-top: 3px solid #667eea;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-left: 10px;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* Keyboard shortcut hints */
-.keyboard-hint {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 10px 15px;
-    border-radius: 5px;
-    font-size: 0.85rem;
-    z-index: 100;
-}
-
-/* Mobile responsive improvements */
 @media (max-width: 768px) {
     .hero h1 {
         font-size: 2.5rem;
@@ -765,18 +738,5 @@ nav {
 
     .upload-sections {
         grid-template-columns: 1fr;
-    }
-    
-    #feedback-page {
-        padding: 1rem;
-    }
-    
-    .session-timer {
-        position: relative;
-        margin-bottom: 1rem;
-    }
-    
-    .keyboard-hint {
-        display: none;
     }
 }
