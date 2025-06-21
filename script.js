@@ -11,8 +11,10 @@ let userRole = '';
 let companyContext = '';
 let policyFiles = [];
 let briefingFiles = [];
+// NEW: Store extracted text content
+let policyTexts = [];
+let briefingTexts = [];
 let traitValues = {};
-// API keys are now securely stored on Vercel - no longer needed here
 
 // NEW: Conversation memory
 let conversationHistory = [];
@@ -21,6 +23,58 @@ let isRecording = false;
 // Voice recognition variables
 let recognition = null;
 let speechSynthesis = window.speechSynthesis;
+
+// PDF.js setup - Load from CDN
+let pdfjsLib = null;
+
+// Initialize PDF.js when page loads
+async function initializePDFJS() {
+    try {
+        // Load PDF.js from CDN
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        document.head.appendChild(script);
+        
+        script.onload = () => {
+            pdfjsLib = window['pdfjs-dist/build/pdf'];
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            console.log('✅ PDF.js loaded successfully');
+        };
+    } catch (error) {
+        console.error('❌ Failed to load PDF.js:', error);
+    }
+}
+
+// PDF text extraction function
+async function extractPDFText(file) {
+    if (!pdfjsLib) {
+        throw new Error('PDF.js not loaded');
+    }
+    
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+        let fullText = '';
+        
+        console.log(`📄 Processing PDF: ${file.name} (${pdf.numPages} pages)`);
+        
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map(item => item.str).join(' ');
+            fullText += pageText + '\n\n';
+        }
+        
+        // Clean up the text
+        fullText = fullText.replace(/\s+/g, ' ').trim();
+        
+        console.log(`✅ Extracted ${fullText.length} characters from ${file.name}`);
+        return fullText;
+    } catch (error) {
+        console.error(`❌ Error extracting text from ${file.name}:`, error);
+        throw error;
+    }
+}
 
 // Firebase Authentication Functions
 auth.onAuthStateChanged(function(user) {
@@ -209,6 +263,8 @@ function resetApplicationState() {
     companyContext = '';
     policyFiles = [];
     briefingFiles = [];
+    policyTexts = [];
+    briefingTexts = [];
     traitValues = {};
     conversationHistory = [];
     isRecording = false;
@@ -295,6 +351,8 @@ function resetForNewSession() {
     companyContext = '';
     policyFiles = [];
     briefingFiles = [];
+    policyTexts = [];
+    briefingTexts = [];
     traitValues = {};
     conversationHistory = [];
     sessionRating = 0;
@@ -564,8 +622,9 @@ const systemPrompts = {
     'interview-supportive-developer': 'Focus on potential and growth mindset over perfect answers. Ask about learning experiences, how they handle failure, what they want to develop. Probe for curiosity, adaptability, and genuine enthusiasm for growth using supportive but thorough questioning techniques. Build on their examples positively while still challenging them. Keep responses to 1-2 sentences maximum.'
 };
 
-// Initialize the application (modified for Firebase)
+// Initialize the application (modified for Firebase and PDF.js)
 document.addEventListener('DOMContentLoaded', function() {
+    initializePDFJS(); // NEW: Initialize PDF.js
     initializeVoiceRecognition();
     setupEventListeners();
     
@@ -799,15 +858,64 @@ function loadTraitSliders() {
     });
 }
 
-function handleFileUpload(event, type) {
+// UPDATED: Enhanced file upload with PDF text extraction
+async function handleFileUpload(event, type) {
     const files = Array.from(event.target.files);
     
     if (type === 'policy') {
         policyFiles = files;
+        policyTexts = [];
         displayFiles(files, 'policy-files');
+        await extractTextsFromFiles(files, 'policy');
     } else if (type === 'briefing') {
         briefingFiles = files;
+        briefingTexts = [];
         displayFiles(files, 'briefing-files');
+        await extractTextsFromFiles(files, 'briefing');
+    }
+}
+
+// NEW: Extract text from uploaded files
+async function extractTextsFromFiles(files, type) {
+    const container = document.getElementById(`${type}-files`);
+    if (!container) return;
+    
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileDiv = container.children[i];
+        
+        if (file.type === 'application/pdf') {
+            try {
+                // Show processing status
+                fileDiv.innerHTML = `📄 ${file.name} <span style="color: #ffc107;">⏳ Extracting text...</span>`;
+                
+                const extractedText = await extractPDFText(file);
+                
+                // Store the extracted text
+                if (type === 'policy') {
+                    policyTexts.push({
+                        filename: file.name,
+                        content: extractedText
+                    });
+                } else if (type === 'briefing') {
+                    briefingTexts.push({
+                        filename: file.name,
+                        content: extractedText
+                    });
+                }
+                
+                // Update display with success
+                const wordCount = extractedText.split(' ').length;
+                fileDiv.innerHTML = `📄 ${file.name} <span style="color: #28a745;">✅ ${wordCount} words extracted</span>`;
+                
+            } catch (error) {
+                console.error(`Failed to extract text from ${file.name}:`, error);
+                fileDiv.innerHTML = `📄 ${file.name} <span style="color: #dc3545;">❌ Text extraction failed</span>`;
+            }
+        } else {
+            // Non-PDF files - just show filename
+            fileDiv.innerHTML = `📄 ${file.name} <span style="color: #666; font-size: 0.9rem;">(${(file.size/1024).toFixed(1)} KB) - Text files supported</span>`;
+        }
     }
 }
 
@@ -901,8 +1009,6 @@ function updateVoiceStatus(status, message) {
         statusElement.className = `voice-status ${status}`;
     }
 }
-
-// Removed saveApiKeys function - API keys are now embedded
 
 function startTraining() {
     // Capture all form data
@@ -1042,7 +1148,7 @@ function addMessage(message, sender) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// Updated AI Response function - now calls your secure Vercel API
+// UPDATED: AI Response function - now includes extracted PDF content
 async function getAIResponse(userMessage) {
     // Fixed persona mapping with debugging
     const personaKey = `${selectedScenario}-${selectedPersona}`;
@@ -1107,23 +1213,44 @@ async function getAIResponse(userMessage) {
         });
     }
     
-    // Add document context
-    let contextualInfo = '';
-    if (policyFiles.length > 0 || briefingFiles.length > 0) {
-        contextualInfo += '\n\nDocument Context:';
-        if (policyFiles.length > 0) {
-            contextualInfo += `\nRelevant Documents: ${policyFiles.map(f => f.name).join(', ')}`;
+    // UPDATED: Add extracted document content
+    let documentContext = '';
+    if (policyTexts.length > 0 || briefingTexts.length > 0) {
+        documentContext += '\n\nDOCUMENT CONTENT:';
+        
+        // Add policy document content
+        if (policyTexts.length > 0) {
+            documentContext += '\n\nPolicy Documents:\n';
+            policyTexts.forEach(doc => {
+                // Truncate very long documents to avoid token limits
+                const truncatedContent = doc.content.length > 2000 
+                    ? doc.content.substring(0, 2000) + '...[truncated]'
+                    : doc.content;
+                documentContext += `\n"${doc.filename}":\n${truncatedContent}\n`;
+            });
         }
-        if (briefingFiles.length > 0) {
-            contextualInfo += `\nBriefing Materials: ${briefingFiles.map(f => f.name).join(', ')}`;
+        
+        // Add briefing document content
+        if (briefingTexts.length > 0) {
+            documentContext += '\n\nBriefing Materials:\n';
+            briefingTexts.forEach(doc => {
+                // Truncate very long documents to avoid token limits
+                const truncatedContent = doc.content.length > 2000 
+                    ? doc.content.substring(0, 2000) + '...[truncated]'
+                    : doc.content;
+                documentContext += `\n"${doc.filename}":\n${truncatedContent}\n`;
+            });
         }
+        
+        documentContext += '\n\nUSE THIS CONTENT: Reference specific details from these documents. Ask about implementation, contradictions, or gaps. Challenge them on specifics from the documents.\n';
     }
     
     // Combine all context
-    const fullPrompt = systemPrompt + conversationContext + traitInstructions + scenarioContext + contextualInfo + 
-        '\n\nIMPORTANT: Keep responses to 1-2 sentences maximum. Be conversational and human. Reference their previous answers. Stay in character.';
+    const fullPrompt = systemPrompt + conversationContext + traitInstructions + scenarioContext + documentContext + 
+        '\n\nIMPORTANT: Keep responses to 1-2 sentences maximum. Be conversational and human. Reference their previous answers and the document content. Stay in character.';
     
     console.log('📝 Final prompt preview:', fullPrompt.substring(0, 200) + '...');
+    console.log('📊 Document context length:', documentContext.length);
     
     try {
         // Call YOUR secure Vercel API instead of OpenAI directly
@@ -1289,4 +1416,4 @@ window.checkFormFields = checkFormFields;
 
 // Feedback functions (make global)
 window.setRating = setRating;
-window.submitFeedback = submitFeedback;;
+window.submitFeedback = submitFeedback;
