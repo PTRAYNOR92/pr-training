@@ -44,19 +44,19 @@
                         <!-- Email/Password Form -->
                         <div style="margin-bottom: 1.5rem;">
                             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Email</label>
-                            <input type="email" id="email" placeholder="your@email.com" style="width: 100%; padding: 0.8rem; border: 2px solid #e9ecef; border-radius: 8px; font-size: 1rem; transition: border-color 0.3s;">
+                            <input type="email" id="email" placeholder="your@email.com" oninput="checkFormFields()" style="width: 100%; padding: 0.8rem; border: 2px solid #e9ecef; border-radius: 8px; font-size: 1rem; transition: border-color 0.3s;">
                         </div>
                         <div style="margin-bottom: 1.5rem;">
                             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Password</label>
-                            <input type="password" id="password" placeholder="Enter password" style="width: 100%; padding: 0.8rem; border: 2px solid #e9ecef; border-radius: 8px; font-size: 1rem; transition: border-color 0.3s;">
+                            <input type="password" id="password" placeholder="Enter password (min 6 characters)" oninput="checkFormFields()" style="width: 100%; padding: 0.8rem; border: 2px solid #e9ecef; border-radius: 8px; font-size: 1rem; transition: border-color 0.3s;">
                         </div>
                         
-                        <button onclick="signInWithEmail()" style="width: 100%; padding: 0.8rem 2rem; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin-bottom: 1rem; transition: all 0.3s;">
+                        <button onclick="signInWithEmail()" id="signin-btn" style="width: 100%; padding: 0.8rem 2rem; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin-bottom: 1rem; transition: all 0.3s; opacity: 0.5;" disabled>
                             Sign In
                         </button>
                         
-                        <button onclick="signUpWithEmail()" style="width: 100%; padding: 0.8rem 2rem; border: 2px solid #667eea; background: transparent; color: #667eea; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s;">
-                            Create Account
+                        <button onclick="signUpWithEmail()" id="signup-btn" style="width: 100%; padding: 0.8rem 2rem; border: 2px solid #667eea; background: transparent; color: #667eea; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s; opacity: 0.5;" disabled>
+                            Create New Account
                         </button>
                         
                         <div id="auth-error" style="color: #dc3545; text-align: center; margin-top: 1rem; display: none; padding: 0.5rem; background: #f8d7da; border-radius: 4px;"></div>
