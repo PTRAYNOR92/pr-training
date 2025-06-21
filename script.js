@@ -354,6 +354,9 @@ function submitFeedback() {
         return;
     }
     
+    console.log('💾 Submitting feedback...');
+    
+    // Save to Firestore if user is logged in
     if (currentUser) {
         const sessionData = {
             userId: currentUser.uid,
@@ -371,21 +374,40 @@ function submitFeedback() {
         
         db.collection('trainingSessions').add(sessionData)
             .then((docRef) => {
-                console.log('Session saved with ID: ', docRef.id);
-                showFeedbackSuccess();
+                console.log('✅ Session saved with ID:', docRef.id);
+                showFeedbackSuccessAndRedirect();
             })
             .catch((error) => {
-                console.error('Error saving session: ', error);
-                showFeedbackSuccess();
+                console.error('⚠️ Error saving session:', error);
+                // Still show success to user
+                showFeedbackSuccessAndRedirect();
             });
     } else {
-        showFeedbackSuccess();
+        // No user logged in, just redirect
+        showFeedbackSuccessAndRedirect();
     }
 }
 
-function showFeedbackSuccess() {
+// New function to handle success message and redirect
+function showFeedbackSuccessAndRedirect() {
+    console.log('🎉 Showing success message...');
+    
+    // Create and show success message
     const feedbackPage = document.getElementById('feedback-page');
+    if (!feedbackPage) {
+        console.error('❌ Feedback page not found for success message');
+        resetAndGoHome();
+        return;
+    }
+    
+    // Remove any existing success messages
+    const existingSuccess = document.querySelector('.feedback-success-message');
+    if (existingSuccess) {
+        existingSuccess.remove();
+    }
+    
     const successMessage = document.createElement('div');
+    successMessage.className = 'feedback-success-message';
     successMessage.style.cssText = `
         background: #28a745;
         color: white;
@@ -396,22 +418,47 @@ function showFeedbackSuccess() {
         max-width: 500px;
         font-weight: 600;
         animation: slideIn 0.3s ease;
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
     `;
     successMessage.textContent = 'Excellent work! Your feedback has been saved. Redirecting...';
     
-    feedbackPage.insertBefore(successMessage, feedbackPage.firstChild);
+    document.body.appendChild(successMessage);
     
+    // Wait 2 seconds then redirect
     setTimeout(() => {
-        const stepIndicator = document.getElementById('step-indicator');
-        if (stepIndicator) {
-            stepIndicator.style.display = 'flex';
-        }
-        
-        resetForNewSession();
-        goToPage(1);
-        
+        console.log('🔄 Redirecting to home...');
         successMessage.remove();
+        resetAndGoHome();
     }, 2000);
+}
+
+// New function to reset and go home
+function resetAndGoHome() {
+    console.log('🏠 Going home...');
+    
+    // Reset session data
+    resetForNewSession();
+    
+    // Hide feedback page
+    const feedbackPage = document.getElementById('feedback-page');
+    if (feedbackPage) {
+        feedbackPage.style.display = 'none';
+    }
+    
+    // Show step indicator
+    const stepIndicator = document.getElementById('step-indicator');
+    if (stepIndicator) {
+        stepIndicator.style.display = 'flex';
+    }
+    
+    // Go to page 1
+    goToPage(1);
+    
+    console.log('✅ Reset complete, now on page 1');
 }
 
 function resetForNewSession() {
@@ -467,6 +514,12 @@ function resetForNewSession() {
             </div>
         `;
     }
+    
+    // Reset star ratings
+    const stars = document.querySelectorAll('.star');
+    stars.forEach(star => {
+        star.style.color = '#ddd';
+    });
 }
 
 // Session Timer Functions
@@ -1566,21 +1619,17 @@ function speakWithBrowserTTS(text) {
     }
 }
 
+// Fixed endTraining function
 function endTraining() {
     if (confirm('Are you sure you want to end this training session?')) {
         stopSessionTimer();
         
-        // Hide all pages
-        const pages = document.querySelectorAll('.page');
-        pages.forEach(page => {
-            if (page) page.style.display = 'none';
-        });
+        console.log('📝 Ending training, showing feedback page...');
         
-        // Show feedback page
-        const feedbackPage = document.getElementById('feedback-page');
-        if (feedbackPage) {
-            feedbackPage.style.display = 'block';
-        }
+        // Hide ALL pages first
+        document.querySelectorAll('.page').forEach(page => {
+            page.style.display = 'none';
+        });
         
         // Hide step indicator
         const stepIndicator = document.getElementById('step-indicator');
@@ -1588,8 +1637,37 @@ function endTraining() {
             stepIndicator.style.display = 'none';
         }
         
+        // Show feedback page
+        const feedbackPage = document.getElementById('feedback-page');
+        if (feedbackPage) {
+            feedbackPage.style.display = 'block';
+            console.log('✅ Feedback page shown');
+        } else {
+            console.error('❌ Feedback page not found!');
+            // Fallback - go to page 1
+            goToPage(1);
+        }
+        
         updateVoiceStatus('ready', 'Session ended');
     }
+}
+
+// Debug function to check feedback page state
+function debugFeedbackPage() {
+    console.log('🔍 Feedback Page Debug:');
+    const feedbackPage = document.getElementById('feedback-page');
+    console.log('Feedback page exists:', !!feedbackPage);
+    console.log('Feedback page display:', feedbackPage ? feedbackPage.style.display : 'N/A');
+    console.log('Current page:', currentPage);
+    console.log('Session rating:', sessionRating);
+    
+    // Check all pages
+    const pages = document.querySelectorAll('.page');
+    pages.forEach(page => {
+        if (page.style.display !== 'none') {
+            console.log(`Visible page: ${page.id}`);
+        }
+    });
 }
 
 // Helper function to debug page visibility
@@ -1622,3 +1700,4 @@ window.setRating = setRating;
 window.submitFeedback = submitFeedback;
 window.showHistory = showHistory;
 window.debugPageVisibility = debugPageVisibility;
+window.debugFeedbackPage = debugFeedbackPage;
