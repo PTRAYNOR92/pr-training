@@ -2,7 +2,7 @@
 let currentUser = null;
 let sessionRating = 0;
 
-// Global state variables (your existing code)
+// Global state variables
 let currentPage = 1;
 let selectedScenario = '';
 let selectedPersona = '';
@@ -12,16 +12,19 @@ let companyContext = '';
 let policyFiles = [];
 let briefingFiles = [];
 let traitValues = {};
-// API keys are now securely stored on Vercel - no longer needed here
 
-// NEW: Conversation memory
+// Conversation memory
 let conversationHistory = [];
 let isRecording = false;
 
 // Voice recognition variables
 let recognition = null;
 let speechSynthesis = window.speechSynthesis;
-let useElevenLabs = true; // Flag to track if we should use ElevenLabs
+let useElevenLabs = true;
+
+// Session timer variables
+let sessionStartTime = null;
+let sessionTimer = null;
 
 // Firebase Authentication Functions
 auth.onAuthStateChanged(function(user) {
@@ -30,7 +33,6 @@ auth.onAuthStateChanged(function(user) {
         currentUser = user;
         console.log('✅ User logged in:', user.email);
         showLoggedInState();
-        // Only redirect to page 1 if we're on the login page
         if (document.getElementById('login-page').classList.contains('active')) {
             console.log('📱 Redirecting to main app...');
             goToPage(1);
@@ -50,7 +52,6 @@ function checkFormFields() {
     const signupBtn = document.getElementById('signup-btn');
     
     if (email && password && password.length >= 6) {
-        // Enable buttons
         signinBtn.disabled = false;
         signupBtn.disabled = false;
         signinBtn.style.opacity = '1';
@@ -58,7 +59,6 @@ function checkFormFields() {
         signinBtn.style.cursor = 'pointer';
         signupBtn.style.cursor = 'pointer';
     } else {
-        // Disable buttons
         signinBtn.disabled = true;
         signupBtn.disabled = true;
         signinBtn.style.opacity = '0.5';
@@ -69,19 +69,21 @@ function checkFormFields() {
 }
 
 function showLoginPage() {
-    // Hide all pages
     document.querySelectorAll('.page').forEach(page => {
         page.classList.remove('active');
     });
-    // Show login page
     document.getElementById('login-page').classList.add('active');
-    // Hide logout link
     document.getElementById('logout-link').style.display = 'none';
+    document.getElementById('history-link').style.display = 'none';
+    const stepIndicator = document.querySelector('.step-indicator');
+    if (stepIndicator) {
+        stepIndicator.style.display = 'none';
+    }
 }
 
 function showLoggedInState() {
-    // Show logout link
     document.getElementById('logout-link').style.display = 'block';
+    document.getElementById('history-link').style.display = 'block';
 }
 
 function signInWithGoogle() {
@@ -90,7 +92,6 @@ function signInWithGoogle() {
         .then((result) => {
             console.log('Google sign-in successful');
             showAuthMessage('Welcome! Redirecting to training...', 'success');
-            // User will be automatically redirected by onAuthStateChanged
         })
         .catch((error) => {
             console.error('Google sign-in error:', error);
@@ -112,7 +113,6 @@ function signInWithEmail() {
         .then((result) => {
             console.log('Email sign-in successful');
             showAuthMessage('Welcome back! Redirecting...', 'success');
-            // User will be automatically redirected by onAuthStateChanged
         })
         .catch((error) => {
             console.error('Email sign-in error:', error);
@@ -139,7 +139,6 @@ function signUpWithEmail() {
         .then((result) => {
             console.log('Account created successfully');
             showAuthMessage('Account created! Welcome to Training Pro!', 'success');
-            // User will be automatically redirected by onAuthStateChanged
         })
         .catch((error) => {
             console.error('Sign-up error:', error);
@@ -151,9 +150,7 @@ function signOut() {
     if (confirm('Are you sure you want to sign out?')) {
         auth.signOut().then(() => {
             console.log('User signed out');
-            // Reset application state
             resetApplicationState();
-            // User will be automatically redirected to login by onAuthStateChanged
         });
     }
 }
@@ -213,9 +210,10 @@ function resetApplicationState() {
     traitValues = {};
     conversationHistory = [];
     isRecording = false;
-    useElevenLabs = true; // Reset voice preference
+    useElevenLabs = true;
+    sessionRating = 0;
+    stopSessionTimer();
     
-    // Reset UI
     document.body.className = '';
     document.querySelectorAll('.scenario-card').forEach(card => {
         card.classList.remove('active');
@@ -224,7 +222,6 @@ function resetApplicationState() {
         btn.classList.remove('active');
     });
     
-    // Clear form fields
     const fields = ['scenario-description', 'your-role', 'company-context', 'email', 'password'];
     fields.forEach(fieldId => {
         const field = document.getElementById(fieldId);
@@ -253,7 +250,6 @@ function submitFeedback() {
         return;
     }
     
-    // Save session data to Firestore
     if (currentUser) {
         const sessionData = {
             userId: currentUser.uid,
@@ -265,31 +261,56 @@ function submitFeedback() {
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
             sessionDuration: conversationHistory.length,
             userRole: userRole,
-            scenarioDescription: scenarioDescription
+            scenarioDescription: scenarioDescription,
+            conversationCount: conversationHistory.filter(h => h.role === 'user').length
         };
         
         db.collection('trainingSessions').add(sessionData)
             .then((docRef) => {
                 console.log('Session saved with ID: ', docRef.id);
-                alert('Feedback saved! Great work on your training session.');
-                goToPage(1); // Return to scenario selection
-                resetForNewSession();
+                showFeedbackSuccess();
             })
             .catch((error) => {
                 console.error('Error saving session: ', error);
-                alert('Feedback saved locally! Your session data has been recorded.');
-                goToPage(1);
-                resetForNewSession();
+                showFeedbackSuccess();
             });
     } else {
-        alert('Feedback saved! Great work on your training session.');
-        goToPage(1);
-        resetForNewSession();
+        showFeedbackSuccess();
     }
 }
 
+function showFeedbackSuccess() {
+    const feedbackPage = document.getElementById('feedback-page');
+    const successMessage = document.createElement('div');
+    successMessage.style.cssText = `
+        background: #28a745;
+        color: white;
+        padding: 1rem 2rem;
+        border-radius: 10px;
+        text-align: center;
+        margin: 1rem auto;
+        max-width: 500px;
+        font-weight: 600;
+        animation: slideIn 0.3s ease;
+    `;
+    successMessage.textContent = 'Excellent work! Your feedback has been saved. Redirecting...';
+    
+    feedbackPage.insertBefore(successMessage, feedbackPage.firstChild);
+    
+    setTimeout(() => {
+        const stepIndicator = document.querySelector('.step-indicator');
+        if (stepIndicator) {
+            stepIndicator.style.display = 'flex';
+        }
+        
+        resetForNewSession();
+        goToPage(1);
+        
+        successMessage.remove();
+    }, 2000);
+}
+
 function resetForNewSession() {
-    // Reset session-specific data but keep user logged in
     selectedScenario = '';
     selectedPersona = '';
     scenarioDescription = '';
@@ -300,8 +321,8 @@ function resetForNewSession() {
     traitValues = {};
     conversationHistory = [];
     sessionRating = 0;
+    stopSessionTimer();
     
-    // Reset voice settings
     useElevenLabs = true;
     const indicator = document.getElementById('voice-status-indicator');
     if (indicator) {
@@ -309,7 +330,6 @@ function resetForNewSession() {
         indicator.style.background = '#28a745';
     }
     
-    // Reset UI elements
     document.body.className = '';
     document.querySelectorAll('.scenario-card').forEach(card => {
         card.classList.remove('active');
@@ -318,27 +338,23 @@ function resetForNewSession() {
         btn.classList.remove('active');
     });
     
-    // Clear form fields except login
     const fields = ['scenario-description', 'your-role', 'company-context', 'feedback-text'];
     fields.forEach(fieldId => {
         const field = document.getElementById(fieldId);
         if (field) field.value = '';
     });
     
-    // Reset buttons
     const nextBtn2 = document.getElementById('next-to-page-2');
     const nextBtn4 = document.getElementById('next-to-page-4');
     if (nextBtn2) nextBtn2.disabled = true;
     if (nextBtn4) nextBtn4.disabled = true;
     
-    // Clear file uploads
     const fileContainers = ['policy-files', 'briefing-files'];
     fileContainers.forEach(containerId => {
         const container = document.getElementById(containerId);
         if (container) container.innerHTML = '';
     });
     
-    // Clear chat
     const messagesContainer = document.getElementById('chat-messages');
     if (messagesContainer) {
         messagesContainer.innerHTML = `
@@ -349,7 +365,111 @@ function resetForNewSession() {
     }
 }
 
-// Your existing trait definitions and personas (keep exactly the same)
+// Session Timer Functions
+function startSessionTimer() {
+    sessionStartTime = Date.now();
+    updateSessionTimer();
+    sessionTimer = setInterval(updateSessionTimer, 1000);
+}
+
+function updateSessionTimer() {
+    if (!sessionStartTime) return;
+    
+    const elapsed = Math.floor((Date.now() - sessionStartTime) / 1000);
+    const minutes = Math.floor(elapsed / 60);
+    const seconds = elapsed % 60;
+    
+    const timerDisplay = document.getElementById('session-timer');
+    if (timerDisplay) {
+        timerDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+}
+
+function stopSessionTimer() {
+    if (sessionTimer) {
+        clearInterval(sessionTimer);
+        sessionTimer = null;
+    }
+    sessionStartTime = null;
+}
+
+// Auto-save progress function
+function autoSaveProgress() {
+    if (currentUser && conversationHistory.length > 0) {
+        const progressData = {
+            userId: currentUser.uid,
+            scenario: selectedScenario,
+            persona: selectedPersona,
+            conversationHistory: conversationHistory,
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+            status: 'in-progress'
+        };
+        
+        const sessionId = `${currentUser.uid}_${Date.now()}`;
+        db.collection('sessionsInProgress').doc(sessionId).set(progressData)
+            .then(() => console.log('Progress auto-saved'))
+            .catch(err => console.error('Auto-save failed:', err));
+    }
+}
+
+// History page functions
+function showHistory() {
+    document.querySelectorAll('.page').forEach(page => {
+        page.classList.remove('active');
+    });
+    document.getElementById('history-page').classList.add('active');
+    const stepIndicator = document.querySelector('.step-indicator');
+    if (stepIndicator) {
+        stepIndicator.style.display = 'none';
+    }
+    loadTrainingHistory();
+}
+
+async function loadTrainingHistory() {
+    if (!currentUser) return;
+    
+    const container = document.getElementById('history-container');
+    if (!container) return;
+    
+    container.innerHTML = '<p>Loading your sessions...</p>';
+    
+    try {
+        const sessions = await db.collection('trainingSessions')
+            .where('userId', '==', currentUser.uid)
+            .orderBy('timestamp', 'desc')
+            .limit(10)
+            .get();
+        
+        if (sessions.empty) {
+            container.innerHTML = '<p>No previous training sessions found.</p>';
+            return;
+        }
+        
+        let html = '<div class="sessions-list">';
+        sessions.forEach(doc => {
+            const data = doc.data();
+            const date = data.timestamp ? data.timestamp.toDate().toLocaleDateString() : 'Unknown date';
+            
+            html += `
+                <div class="session-card" style="background: #f8f9fa; padding: 1.5rem; border-radius: 10px; margin-bottom: 1rem;">
+                    <h4>${data.scenario || 'Unknown'} - ${data.persona || 'Unknown'}</h4>
+                    <p>Role: ${data.userRole || 'Not specified'}</p>
+                    <p>Date: ${date}</p>
+                    <p>Rating: ${'⭐'.repeat(data.rating || 0)}</p>
+                    <p>Messages exchanged: ${data.conversationCount || 0}</p>
+                </div>
+            `;
+        });
+        html += '</div>';
+        
+        container.innerHTML = html;
+    } catch (error) {
+        console.error('Error loading history:', error);
+        container.innerHTML = '<p>Error loading session history.</p>';
+    }
+}
+
+// Trait definitions
 const traitDefinitions = {
     committee: {
         aggressiveness: {
@@ -457,7 +577,7 @@ const traitDefinitions = {
     }
 };
 
-// Updated Personas for each scenario type (keep exactly the same)
+// Personas for each scenario
 const personas = {
     committee: [
         {
@@ -539,16 +659,14 @@ const personas = {
     ]
 };
 
-// CORRECTED System prompts with proper key mapping (keep exactly the same)
+// System prompts
 const systemPrompts = {
-    // COMMITTEE PERSONAS - Keys must match exactly with persona IDs
     'committee-forensic-chair': 'Channel the select committee chair style of figures like Yvette Cooper or Hilary Benn - methodical, evidence-based questioning that builds cases systematically. Reference previous witness testimony, maintain formal parliamentary courtesy but be relentless in pursuing facts. Use the questioning approach seen in Hansard transcripts - start with context-setting, then drill down systematically. Remember everything they\'ve said and build your case witness by witness. Keep responses to 1-2 sentences maximum.',
     
     'committee-backbench-terrier': 'Embody the style of persistent backbench MPs like those who made their reputation holding power to account in select committees. You have no ministerial ambitions - just a burning need for truth. Apply the approach seen in parliamentary questioning where MPs circle back to unanswered questions multiple ways until getting real answers. You\'re not impressed by titles or evasions - you represent ordinary constituents who deserve straight answers. Keep responses to 1-2 sentences maximum.',
     
     'committee-technical-specialist': 'Channel the approach of subject-matter expert MPs who sit on specialist committees - those with genuine expertise in policy areas. You know the legislation inside out, previous consultations, international comparisons. Use the technically precise questioning style seen in select committee transcripts that reveals whether witnesses really understand their brief. Catch when they misstate facts or dodge technical realities. Keep responses to 1-2 sentences maximum.',
 
-    // MEDIA PERSONAS  
     'media-political-heavyweight': 'Channel the interviewing style of Jeremy Paxman and Andrew Neil - veteran political interviewers known for forensic preparation and refusing to accept evasive answers. You\'ve done your homework like they do - you know voting records, previous statements, contradictions. Apply their approach of circling back to unanswered questions and not being deflected by political spin. You represent viewers who want straight answers, using their confrontational but professional style. Keep responses to 1-2 sentences maximum.',
     
     'media-time-pressure-broadcaster': 'Use the radio interviewing style of John Humphrys and Nick Robinson on Radio 4 Today programme - fast-paced with tight time constraints and broad audience appeal. Apply their technique of cutting through jargon, pressing for simple explanations, and moving quickly between topics. Channel their approach of making complex issues accessible to ordinary listeners with time pressure and urgency. Keep responses to 1-2 sentences maximum.',
@@ -557,14 +675,12 @@ const systemPrompts = {
     
     'media-sympathetic-professional': 'Use the interviewing approach of Emily Maitlis or Martha Kearney - respected broadcasters known for fair but thorough interviews. Give people space to explain complex issues like they do, while still asking tough questions when needed. Channel their style of being genuinely interested in understanding perspectives while maintaining journalistic integrity and public interest. Keep responses to 1-2 sentences maximum.',
 
-    // CONSULTATION PERSONAS
     'consultation-concerned-local': 'You are a local resident whose life will be directly affected by this decision. You\'re not a policy expert - you\'re a real person with real concerns about your community, your family, your daily life. Ask emotional, practical questions about what this actually means for ordinary people like you. Stay grounded in personal impact, not policy theory. Remember their previous answers and hold them to commitments. Keep responses to 1-2 sentences maximum.',
     
     'consultation-business-voice': 'You are a local business owner trying to understand what this policy means for your livelihood. Think in practical terms - costs, compliance, timelines, paperwork. You\'re not hostile to progress but need to understand real-world implementation and economic impacts on small businesses like yours. Reference their previous statements about costs and timelines. Keep responses to 1-2 sentences maximum.',
     
     'consultation-informed-activist': 'You are a community activist who\'s done homework on this issue. You understand policy detail but approach from values-based perspective - social justice, environmental impact, community equity. Challenge officials to consider broader implications beyond their narrow brief, drawing on activist questioning techniques. Remember their commitments and challenge inconsistencies. Keep responses to 1-2 sentences maximum.',
 
-    // INTERVIEW PERSONAS
     'interview-senior-stakeholder': 'You are a senior executive evaluating whether this person can operate at the level required. Ask about strategic thinking, leadership examples, how they handle pressure and ambiguity. Assess cultural fit and whether they can represent the organization externally. Use executive-level questioning approach. Build on their previous answers to assess consistency. Keep responses to 1-2 sentences maximum.',
     
     'interview-technical-evaluator': 'You are a technical expert evaluating actual competency, not just resume claims. Ask specific technical questions, present scenarios, test problem-solving in real-time. Distinguish between theoretical knowledge and practical experience through hands-on technical assessment. Reference their previous technical claims and build complexity. Keep responses to 1-2 sentences maximum.',
@@ -574,14 +690,12 @@ const systemPrompts = {
     'interview-supportive-developer': 'Focus on potential and growth mindset over perfect answers. Ask about learning experiences, how they handle failure, what they want to develop. Probe for curiosity, adaptability, and genuine enthusiasm for growth using supportive but thorough questioning techniques. Build on their examples positively while still challenging them. Keep responses to 1-2 sentences maximum.'
 };
 
-// Initialize the application (modified for Firebase)
+// Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     initializeVoiceRecognition();
     setupEventListeners();
     
-    // Load available voices for fallback TTS
     if ('speechSynthesis' in window) {
-        // Function to log available voices
         const logVoices = () => {
             const voices = speechSynthesis.getVoices();
             console.log(`Loaded ${voices.length} TTS voices`);
@@ -589,17 +703,30 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log(`Found ${britishVoices.length} British voices:`, britishVoices.map(v => v.name));
         };
         
-        // Chrome loads voices asynchronously
         speechSynthesis.addEventListener('voiceschanged', logVoices);
-        // Trigger initial voice load
         speechSynthesis.getVoices();
-        // Also try loading after a delay
         setTimeout(() => speechSynthesis.getVoices(), 100);
     }
     
-    // Ensure login page is shown initially
     console.log('🔥 App loaded - waiting for Firebase auth...');
     showLoginPage();
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    if (currentPage !== 5) return;
+    
+    if ((e.ctrlKey || e.metaKey) && e.code === 'Space') {
+        e.preventDefault();
+        toggleVoiceRecognition();
+    }
+    
+    if (e.code === 'Escape') {
+        const confirmEnd = confirm('Press OK to end training session');
+        if (confirmEnd) {
+            endTraining();
+        }
+    }
 });
 
 function initializeVoiceRecognition() {
@@ -646,7 +773,6 @@ function initializeVoiceRecognition() {
 }
 
 function setupEventListeners() {
-    // Scenario selection
     document.querySelectorAll('.scenario-card').forEach(card => {
         card.addEventListener('click', function() {
             selectScenario(this.dataset.scenario);
@@ -657,49 +783,46 @@ function setupEventListeners() {
 function selectScenario(scenario) {
     selectedScenario = scenario;
     
-    // Update UI
     document.querySelectorAll('.scenario-card').forEach(card => {
         card.classList.remove('active');
     });
     document.querySelector(`[data-scenario="${scenario}"]`).classList.add('active');
     
-    // Apply theme
     document.body.className = `${scenario}-theme`;
     
-    // Enable next button
     const nextBtn = document.getElementById('next-to-page-2');
     if (nextBtn) {
         nextBtn.disabled = false;
     }
     
-    // Update step
     updateStep(1);
 }
 
 function goToPage(pageNumber) {
-    // Hide current page
     document.querySelectorAll('.page').forEach(page => {
         page.classList.remove('active');
     });
+    document.getElementById('feedback-page').classList.remove('active');
     
-    // Show target page
+    const stepIndicator = document.querySelector('.step-indicator');
+    if (stepIndicator) {
+        stepIndicator.style.display = 'flex';
+    }
+    
     const targetPage = document.getElementById(`page-${pageNumber}`);
     if (targetPage) {
         targetPage.classList.add('active');
     }
     currentPage = pageNumber;
     
-    // Update step indicator
     updateStep(pageNumber);
     
-    // Special handling for specific pages
     if (pageNumber === 3) {
         loadPersonas();
         setupFileUploadListeners();
     } else if (pageNumber === 4) {
         updateSummary();
     } else if (pageNumber === 5) {
-        // Set up voice button listener when we reach training page
         const voiceBtn = document.getElementById('voice-toggle');
         if (voiceBtn && !voiceBtn.hasAttribute('data-listener')) {
             voiceBtn.addEventListener('click', toggleVoiceRecognition);
@@ -764,7 +887,6 @@ function loadPersonas() {
 function selectPersona(persona) {
     selectedPersona = persona;
     
-    // Update UI
     document.querySelectorAll('.persona-btn').forEach(btn => {
         btn.classList.remove('active');
     });
@@ -773,14 +895,12 @@ function selectPersona(persona) {
         activeBtn.classList.add('active');
     }
     
-    // Show trait sliders
     const traitSliders = document.getElementById('trait-sliders');
     if (traitSliders) {
         traitSliders.style.display = 'block';
         loadTraitSliders();
     }
     
-    // Enable next button
     const nextBtn = document.getElementById('next-to-page-4');
     if (nextBtn) {
         nextBtn.disabled = false;
@@ -798,7 +918,7 @@ function loadTraitSliders() {
     traitValues = {};
     
     Object.entries(traits).forEach(([key, trait]) => {
-        traitValues[key] = 5; // Default value
+        traitValues[key] = 5;
         
         const sliderGroup = document.createElement('div');
         sliderGroup.className = 'slider-group';
@@ -880,7 +1000,6 @@ function updateSummary() {
     }
 }
 
-// NEW: Enhanced voice control (click to start/stop)
 function toggleVoiceRecognition() {
     if (!recognition) {
         alert('Voice recognition not supported in this browser');
@@ -888,13 +1007,11 @@ function toggleVoiceRecognition() {
     }
     
     if (isRecording) {
-        // Stop recording
         recognition.stop();
         isRecording = false;
         updateVoiceButton('idle');
         updateVoiceStatus('ready', 'Ready for voice input');
     } else {
-        // Start recording
         recognition.start();
         isRecording = true;
         updateVoiceButton('recording');
@@ -930,10 +1047,7 @@ function updateVoiceStatus(status, message) {
     }
 }
 
-// Removed saveApiKeys function - API keys are now embedded
-
 function startTraining() {
-    // Capture all form data
     const descInput = document.getElementById('scenario-description');
     const roleInput = document.getElementById('your-role');
     const contextInput = document.getElementById('company-context');
@@ -942,18 +1056,13 @@ function startTraining() {
     if (roleInput) userRole = roleInput.value.trim();
     if (contextInput) companyContext = contextInput.value.trim();
     
-    // Skip API key modal - keys are embedded
     beginTrainingSession();
 }
 
 function beginTrainingSession() {
-    // Reset conversation history for new session
     conversationHistory = [];
-    
-    // Reset ElevenLabs flag for new session
     useElevenLabs = true;
     
-    // Reset voice indicator
     const indicator = document.getElementById('voice-status-indicator');
     if (indicator) {
         indicator.textContent = '🎤 VOICE ENABLED';
@@ -962,8 +1071,8 @@ function beginTrainingSession() {
     
     goToPage(5);
     updateStep(5);
+    startSessionTimer();
     
-    // Set up training interface
     const scenarioNames = {
         committee: 'Select Committee',
         media: 'Media Interview',
@@ -984,7 +1093,6 @@ function beginTrainingSession() {
         personaDescription.textContent = `Interviewer: ${personaData?.name || 'Unknown'}`;
     }
     
-    // Clear previous messages
     const messagesContainer = document.getElementById('chat-messages');
     if (messagesContainer) {
         messagesContainer.innerHTML = `
@@ -1010,7 +1118,6 @@ async function sendMessage() {
     const message = input.value.trim();
     if (!message) return;
     
-    // Add user message to conversation history
     conversationHistory.push({
         role: 'user',
         content: message,
@@ -1020,7 +1127,6 @@ async function sendMessage() {
     addMessage(message, 'user');
     input.value = '';
     
-    // Show typing indicator
     const typingDiv = document.createElement('div');
     typingDiv.className = 'message interviewer';
     typingDiv.innerHTML = '<strong>Interviewer:</strong> <em>typing...</em>';
@@ -1038,7 +1144,6 @@ async function sendMessage() {
             typingElement.remove();
         }
         
-        // Add AI response to conversation history
         conversationHistory.push({
             role: 'interviewer',
             content: response,
@@ -1046,8 +1151,8 @@ async function sendMessage() {
         });
         
         addMessage(response, 'interviewer');
+        autoSaveProgress();
         
-        // Convert response to speech using your secure API
         console.log('🔊 Attempting to speak response:', response.substring(0, 50) + '...');
         await speakResponse(response);
         
@@ -1081,32 +1186,26 @@ function addMessage(message, sender) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// Updated AI Response function - now calls your secure Vercel API
 async function getAIResponse(userMessage) {
-    // Fixed persona mapping with debugging
     const personaKey = `${selectedScenario}-${selectedPersona}`;
     
-    // Debug: Show what we're looking for
     console.log('🔍 Debug Info:');
     console.log('Selected Scenario:', selectedScenario);
     console.log('Selected Persona:', selectedPersona);
     console.log('Looking for key:', personaKey);
     
-    // Get the system prompt with better fallback
     let systemPrompt = systemPrompts[personaKey];
     
     if (!systemPrompt) {
         console.warn('❌ No prompt found for:', personaKey);
         console.log('Available keys:', Object.keys(systemPrompts));
         
-        // Fallback to a basic prompt
         systemPrompt = 'You are a professional interviewer conducting a training session. Ask relevant questions about the scenario and remember their previous answers. Keep responses to 1-2 sentences maximum.';
         console.log('✅ Using fallback prompt');
     } else {
         console.log('✅ Found matching prompt');
     }
     
-    // Build conversation memory context
     let conversationContext = '';
     if (conversationHistory.length > 2) {
         conversationContext = '\n\nPREVIOUS CONVERSATION:\n';
@@ -1120,10 +1219,8 @@ async function getAIResponse(userMessage) {
         conversationContext += '\nREMEMBER: Reference their previous answers. Point out contradictions. Build on what they\'ve said. Be reactive, not generic.\n';
     }
     
-    // Add trait customization
     let traitInstructions = '\n\nCustomized traits for this session:\n';
     
-    // Add scenario context
     let scenarioContext = '';
     if (scenarioDescription) {
         scenarioContext += `\n\nScenario Context: ${scenarioDescription}`;
@@ -1135,7 +1232,6 @@ async function getAIResponse(userMessage) {
         scenarioContext += `\nOrganization: ${companyContext}`;
     }
     
-    // Build trait instructions - simplified to avoid undefined errors
     if (traitValues && typeof traitValues === 'object') {
         Object.entries(traitValues).forEach(([key, value]) => {
             if (value >= 8) {
@@ -1146,7 +1242,6 @@ async function getAIResponse(userMessage) {
         });
     }
     
-    // Add document context
     let contextualInfo = '';
     if (policyFiles.length > 0 || briefingFiles.length > 0) {
         contextualInfo += '\n\nDocument Context:';
@@ -1158,14 +1253,12 @@ async function getAIResponse(userMessage) {
         }
     }
     
-    // Combine all context
     const fullPrompt = systemPrompt + conversationContext + traitInstructions + scenarioContext + contextualInfo + 
         '\n\nIMPORTANT: Keep responses to 1-2 sentences maximum. Be conversational and human. Reference their previous answers. Stay in character.';
     
     console.log('📝 Final prompt preview:', fullPrompt.substring(0, 200) + '...');
     
     try {
-        // Call YOUR secure Vercel API instead of OpenAI directly
         const response = await fetch('/api/openai', {
             method: 'POST',
             headers: {
@@ -1207,26 +1300,25 @@ async function getAIResponse(userMessage) {
 async function speakResponse(text) {
     updateVoiceStatus('speaking', 'AI is speaking...');
     
-    // Try ElevenLabs first if enabled
-    if (useElevenLabs) {
+    let retryCount = 0;
+    const maxRetries = 2;
+    
+    while (retryCount < maxRetries && useElevenLabs) {
         try {
-            // More subtle pauses for natural British speech
             const naturalText = text
-                .replace(/\. /g, '.. ') // Shorter pauses after sentences
-                .replace(/\? /g, '?. ') // Brief pause after questions
-                .replace(/: /g, ':. '); // Small pause after colons
+                .replace(/\. /g, '.. ')
+                .replace(/\? /g, '?. ')
+                .replace(/: /g, ':. ');
             
-            // Adjust voice settings based on interviewer intensity
             const intensity = Object.values(traitValues).reduce((a, b) => a + b, 0) / Object.keys(traitValues).length;
             
             const voiceSettings = {
-                stability: intensity > 7 ? 0.55 : 0.65, // More natural variation
-                similarity_boost: 0.75, // Balanced for British accents
-                style: intensity > 7 ? 0.6 : 0.4, // More expressive
+                stability: intensity > 7 ? 0.55 : 0.65,
+                similarity_boost: 0.75,
+                style: intensity > 7 ? 0.6 : 0.4,
                 use_speaker_boost: true
             };
             
-            // Call YOUR secure Vercel API with scenario context
             const response = await fetch('/api/elevenlabs', {
                 method: 'POST',
                 headers: {
@@ -1234,8 +1326,8 @@ async function speakResponse(text) {
                 },
                 body: JSON.stringify({
                     text: naturalText,
-                    scenario: selectedScenario, // Pass scenario for voice selection
-                    model_id: 'eleven_turbo_v2', // Turbo model for better quality
+                    scenario: selectedScenario,
+                    model_id: 'eleven_turbo_v2',
                     voice_settings: voiceSettings
                 })
             });
@@ -1245,26 +1337,21 @@ async function speakResponse(text) {
                 const audioUrl = URL.createObjectURL(audioBlob);
                 const audio = new Audio(audioUrl);
                 
-                // Set volume and playback rate
                 audio.volume = 0.9;
-                audio.playbackRate = 1.05; // Slightly faster for more natural British speech
+                audio.playbackRate = 1.05;
                 
-                // Add error handling for audio playback
                 audio.onerror = (e) => {
                     console.error('Audio playback error:', e);
-                    // Fall back to browser speech
                     useElevenLabs = false;
                     speakWithBrowserTTS(text);
                 };
                 
-                // Play the audio
                 const playPromise = audio.play();
                 
                 if (playPromise !== undefined) {
                     playPromise
                         .then(() => {
                             console.log('Audio playing successfully');
-                            // Reset voice indicator to show ElevenLabs is working
                             const indicator = document.getElementById('voice-status-indicator');
                             if (indicator) {
                                 indicator.textContent = '🎤 VOICE ENABLED';
@@ -1273,7 +1360,6 @@ async function speakResponse(text) {
                         })
                         .catch(error => {
                             console.error('Audio play failed:', error);
-                            // Fall back to browser speech
                             useElevenLabs = false;
                             speakWithBrowserTTS(text);
                         });
@@ -1284,43 +1370,48 @@ async function speakResponse(text) {
                     URL.revokeObjectURL(audioUrl);
                 };
                 
-                return; // Success with ElevenLabs
+                return;
             } else {
                 console.error('ElevenLabs API error:', response.status);
                 const errorData = await response.json();
                 console.error('Error details:', errorData);
-                // Fall back to browser speech
-                useElevenLabs = false;
+                retryCount++;
+                
+                if (retryCount < maxRetries) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                } else {
+                    useElevenLabs = false;
+                }
             }
         } catch (error) {
             console.error('ElevenLabs error:', error);
-            // Fall back to browser speech
-            useElevenLabs = false;
+            retryCount++;
+            
+            if (retryCount < maxRetries) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            } else {
+                useElevenLabs = false;
+            }
         }
     }
     
-    // Fallback to browser's built-in speech synthesis
     speakWithBrowserTTS(text);
 }
 
 function speakWithBrowserTTS(text) {
-    // Update indicator to show we're using browser TTS
     const indicator = document.getElementById('voice-status-indicator');
     if (indicator) {
         indicator.textContent = '🔊 BROWSER VOICE';
-        indicator.style.background = '#ffc107'; // Yellow to indicate fallback
+        indicator.style.background = '#ffc107';
     }
     
     if ('speechSynthesis' in window) {
-        // Cancel any ongoing speech
         speechSynthesis.cancel();
         
         const utterance = new SpeechSynthesisUtterance(text);
         
-        // Get available voices and prioritize British ones
         const voices = speechSynthesis.getVoices();
         
-        // Look for British voices first
         const britishVoices = voices.filter(voice => 
             voice.lang.includes('en-GB') || 
             voice.lang.includes('en_GB') ||
@@ -1328,12 +1419,9 @@ function speakWithBrowserTTS(text) {
             voice.name.toLowerCase().includes('uk')
         );
         
-        // Fallback to any English voice if no British found
         const englishVoices = voices.filter(voice => voice.lang.startsWith('en'));
         
-        // Select the best available voice
         if (britishVoices.length > 0) {
-            // Prefer Google UK voices or Microsoft voices which tend to sound better
             const preferredBritish = britishVoices.find(voice => 
                 voice.name.includes('Google UK') || 
                 voice.name.includes('Microsoft') ||
@@ -1346,8 +1434,7 @@ function speakWithBrowserTTS(text) {
             console.log('Using English voice (no British found):', utterance.voice.name);
         }
         
-        // Adjust speech parameters for more natural British sound
-        utterance.rate = 1.1; // Slightly faster for natural British speech
+        utterance.rate = 1.1;
         utterance.pitch = 1.0;
         utterance.volume = 0.9;
         
@@ -1369,94 +1456,21 @@ function speakWithBrowserTTS(text) {
 
 function endTraining() {
     if (confirm('Are you sure you want to end this training session?')) {
-        // Go to feedback page instead of resetting everything
-        document.getElementById('feedback-page').classList.add('active');
-        document.getElementById('page-5').classList.remove('active');
-    }
-}
-
-// Test function to verify persona mapping
-function testPersonaMapping() {
-    console.log('🧪 Testing Persona Mapping...');
-    
-    // Test all scenario-persona combinations
-    const testCombinations = [
-        // Committee
-        ['committee', 'forensic-chair'],
-        ['committee', 'backbench-terrier'],
-        ['committee', 'technical-specialist'],
+        stopSessionTimer();
         
-        // Media
-        ['media', 'political-heavyweight'],
-        ['media', 'time-pressure-broadcaster'],
-        ['media', 'investigative-journalist'],
-        ['media', 'sympathetic-professional'],
-        
-        // Consultation
-        ['consultation', 'concerned-local'],
-        ['consultation', 'business-voice'],
-        ['consultation', 'informed-activist'],
-        
-        // Interview
-        ['interview', 'senior-stakeholder'],
-        ['interview', 'technical-evaluator'],
-        ['interview', 'panel-perspective'],
-        ['interview', 'supportive-developer']
-    ];
-    
-    let passedTests = 0;
-    let totalTests = testCombinations.length;
-    
-    testCombinations.forEach(([scenario, persona]) => {
-        const key = `${scenario}-${persona}`;
-        const prompt = systemPrompts[key];
-        
-        if (prompt) {
-            console.log(`✅ ${key} → Found prompt`);
-            passedTests++;
-        } else {
-            console.error(`❌ ${key} → Missing prompt!`);
-        }
-    });
-    
-    console.log(`\n📊 Test Results: ${passedTests}/${totalTests} passed`);
-    
-    if (passedTests === totalTests) {
-        console.log('🎉 All persona mappings working correctly!');
-    } else {
-        console.error('💥 Some persona mappings are broken - check the keys above');
-        console.log('Available prompt keys:', Object.keys(systemPrompts));
-    }
-    
-    return passedTests === totalTests;
-}
-
-// Test voice functionality
-function testVoices() {
-    console.log('🔊 Testing Voice System...');
-    
-    // Test ElevenLabs for each scenario
-    const scenarios = ['committee', 'media', 'consultation', 'interview'];
-    console.log('Testing ElevenLabs voices for scenarios:', scenarios);
-    
-    // Test browser TTS
-    if ('speechSynthesis' in window) {
-        const voices = speechSynthesis.getVoices();
-        const britishVoices = voices.filter(v => 
-            v.lang.includes('en-GB') || 
-            v.lang.includes('en_GB') ||
-            v.name.toLowerCase().includes('british') ||
-            v.name.toLowerCase().includes('uk')
-        );
-        
-        console.log(`Browser TTS: Found ${britishVoices.length} British voices`);
-        britishVoices.forEach(v => {
-            console.log(`- ${v.name} (${v.lang})`);
+        document.querySelectorAll('.page').forEach(page => {
+            page.classList.remove('active');
         });
+        
+        document.getElementById('feedback-page').classList.add('active');
+        
+        const stepIndicator = document.querySelector('.step-indicator');
+        if (stepIndicator) {
+            stepIndicator.style.display = 'none';
+        }
+        
+        updateVoiceStatus('ready', 'Session ended');
     }
-    
-    // You can test a specific voice by calling:
-    // speakResponse("Hello, this is a test of the voice system.");
 }
 
 // Global functions for onclick handlers
@@ -1468,16 +1482,11 @@ window.endTraining = endTraining;
 window.handleKeyPress = handleKeyPress;
 window.sendMessage = sendMessage;
 window.toggleVoiceRecognition = toggleVoiceRecognition;
-window.testPersonaMapping = testPersonaMapping;
-window.testVoices = testVoices;
-
-// Firebase Auth functions (make global)
 window.signInWithGoogle = signInWithGoogle;
 window.signInWithEmail = signInWithEmail;
 window.signUpWithEmail = signUpWithEmail;
 window.signOut = signOut;
 window.checkFormFields = checkFormFields;
-
-// Feedback functions (make global)
 window.setRating = setRating;
 window.submitFeedback = submitFeedback;
+window.showHistory = showHistory;
