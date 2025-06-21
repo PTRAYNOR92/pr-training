@@ -6,7 +6,7 @@
     <title>Training Pro - Master Your Professional Presence</title>
     <link rel="stylesheet" href="styles.css">
     
-    <!-- PDF.js library for PDF text extraction -->
+    <!-- ADDED: PDF.js library for PDF text extraction -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 </head>
 <body>
@@ -16,7 +16,6 @@
             <ul class="nav-links">
                 <li><a href="#home">Home</a></li>
                 <li><a href="#training">Training</a></li>
-                <li><a href="#" onclick="showHistory()" id="history-link" style="display: none;">History</a></li>
                 <li><a href="#about">About</a></li>
                 <li><a href="#" onclick="signOut()" id="logout-link" style="display: none;">Logout</a></li>
             </ul>
@@ -33,7 +32,7 @@
     <div class="container">
         <div class="main-content">
             <!-- Login Page -->
-            <div class="page" id="login-page" style="display: none;">
+            <div class="page active" id="login-page">
                 <div style="display: flex; align-items: center; justify-content: center; min-height: 500px; padding: 2rem;">
                     <div style="background: white; padding: 3rem; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 400px; width: 100%;">
                         <h2 style="text-align: center; margin-bottom: 2rem; color: #333;">Welcome to Training Pro</h2>
@@ -69,8 +68,7 @@
                 </div>
             </div>
 
-            <!-- Step Indicator (hidden by default) -->
-            <div class="step-indicator" id="step-indicator" style="display: none;">
+            <div class="step-indicator">
                 <div class="step active" id="step-1">
                     <div class="step-number">1</div>
                     <span class="step-text">Choose Scenario</span>
@@ -94,7 +92,7 @@
             </div>
 
             <!-- Page 1: Scenario Selection -->
-            <div class="page" id="page-1" style="display: none;">
+            <div class="page" id="page-1">
                 <h2>Choose Your Training Scenario</h2>
                 <div class="scenarios">
                     <div class="scenario-card" data-scenario="committee">
@@ -125,7 +123,7 @@
             </div>
 
             <!-- Page 2: Scenario Customization -->
-            <div class="page" id="page-2" style="display: none;">
+            <div class="page" id="page-2">
                 <h2>Customize Your Scenario</h2>
                 <div class="scenario-inputs">
                     <div class="input-group">
@@ -156,6 +154,23 @@
                             placeholder="e.g., TechCorp, Department for Energy, Local Council"
                         >
                         <small>What organization are you representing?</small>
+                    </div>
+
+                    <!-- NEW: Top Lines Section -->
+                    <div class="input-group" style="background: #e3f2fd; border-color: #667eea;">
+                        <label for="top-lines" style="color: #667eea;">
+                            🎯 Key Messages to Land
+                            <span style="font-size: 0.9rem; font-weight: normal;">(Max 5)</span>
+                        </label>
+                        <div id="top-lines-container">
+                            <div class="top-line-input">
+                                <input type="text" class="top-line" placeholder="Key message 1" maxlength="150">
+                            </div>
+                        </div>
+                        <button onclick="addTopLine()" style="margin-top: 0.5rem; padding: 0.5rem 1rem; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 0.9rem;">
+                            + Add Another Key Message
+                        </button>
+                        <small style="color: #5a67d8;">These are the main points you want to communicate effectively during your session</small>
                     </div>
                 </div>
 
@@ -188,7 +203,7 @@
             </div>
 
             <!-- Page 3: Persona Selection -->
-            <div class="page" id="page-3" style="display: none;">
+            <div class="page" id="page-3">
                 <h2>Select Your Interviewer</h2>
                 <div class="personas" id="personas-container">
                     <!-- Populated by JavaScript -->
@@ -208,7 +223,7 @@
             </div>
 
             <!-- Page 4: Final Preparation -->
-            <div class="page" id="page-4" style="display: none;">
+            <div class="page" id="page-4">
                 <h2>Final Preparation</h2>
                 <div style="text-align: center; padding: 2rem;">
                     <div id="scenario-summary">
@@ -217,6 +232,7 @@
                             <p><strong>Scenario:</strong> <span id="summary-scenario"></span></p>
                             <p><strong>Your Role:</strong> <span id="summary-role"></span></p>
                             <p><strong>Interviewer:</strong> <span id="summary-persona"></span></p>
+                            <p><strong>Key Messages:</strong> <span id="summary-top-lines"></span></p>
                             <p><strong>Voice Training:</strong> Enabled</p>
                         </div>
                     </div>
@@ -239,13 +255,12 @@
             </div>
 
             <!-- Page 5: Training Interface -->
-            <div class="page" id="page-5" style="display: none;">
+            <div class="page" id="page-5">
                 <div class="training-interface">
                     <div class="training-header">
                         <div class="training-status">
                             <div class="status-item status-live">● TRAINING SESSION</div>
                             <div class="status-item status-voice" id="voice-status-indicator">🎤 VOICE ENABLED</div>
-                            <div class="status-item">⏱️ <span id="session-timer">0:00</span></div>
                         </div>
                         <h3 id="training-title">Training Session</h3>
                         <p id="persona-description"></p>
@@ -280,77 +295,32 @@
                         <button class="btn btn-secondary" onclick="endTraining()">End Session</button>
                         <button class="btn btn-secondary" onclick="goToPage(1)">New Session</button>
                     </div>
-                    
-                    <div class="keyboard-hint">
-                        💡 Tip: Press Ctrl+Space to toggle voice, Esc to end session
-                    </div>
-                </div>
-            </div>
-
-            <!-- Training History Page -->
-            <div class="page" id="history-page" style="display: none;">
-                <div style="padding: 2rem;">
-                    <h2>Your Training History</h2>
-                    <div id="history-container" style="margin-top: 2rem;">
-                        <!-- Sessions will be loaded here -->
-                    </div>
-                    <div class="navigation-buttons">
-                        <button class="btn btn-secondary" onclick="goToPage(1)">Back to Training</button>
-                    </div>
                 </div>
             </div>
 
             <!-- Feedback Page -->
-            <div class="page" id="feedback-page" style="display: none;">
+            <div class="page" id="feedback-page">
                 <div style="padding: 2rem;">
-                    <h2>Session Feedback</h2>
+                    <h2>Session Performance Analysis</h2>
                     
                     <div style="background: #f8f9fa; padding: 2rem; border-radius: 15px; margin: 2rem 0;">
-                        <h3>How did that session go?</h3>
+                        <h3>AI-Powered Feedback</h3>
                         
-                        <div style="display: flex; gap: 0.5rem; justify-content: center; margin: 1rem 0;" id="rating-stars">
-                            <span class="star" onclick="setRating(1)" style="font-size: 2rem; color: #ddd; cursor: pointer; transition: color 0.2s;">★</span>
-                            <span class="star" onclick="setRating(2)" style="font-size: 2rem; color: #ddd; cursor: pointer; transition: color 0.2s;">★</span>
-                            <span class="star" onclick="setRating(3)" style="font-size: 2rem; color: #ddd; cursor: pointer; transition: color 0.2s;">★</span>
-                            <span class="star" onclick="setRating(4)" style="font-size: 2rem; color: #ddd; cursor: pointer; transition: color 0.2s;">★</span>
-                            <span class="star" onclick="setRating(5)" style="font-size: 2rem; color: #ddd; cursor: pointer; transition: color 0.2s;">★</span>
-                        </div>
-
-                        <div style="margin-bottom: 1.5rem;">
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">What went well? What would you improve?</label>
-                            <textarea id="feedback-text" placeholder="Share your thoughts on this training session..." style="width: 100%; padding: 1rem; border: 2px solid #e9ecef; border-radius: 8px; resize: vertical; min-height: 100px;"></textarea>
-                        </div>
-
-                        <h4>AI Performance Analysis</h4>
-                        <div style="background: white; padding: 1.5rem; border-radius: 10px; margin: 1rem 0;">
-                            <p><strong>Response Clarity:</strong> <span style="color: #28a745;">Good</span> - Your answers were clear and direct</p>
-                            <div style="background: #e9ecef; height: 8px; border-radius: 4px; overflow: hidden; margin: 1rem 0;">
-                                <div style="background: linear-gradient(90deg, #667eea, #764ba2); height: 100%; width: 75%; transition: width 0.3s ease;"></div>
-                            </div>
-                            
-                            <p><strong>Confidence Level:</strong> <span style="color: #ffc107;">Moderate</span> - Some hesitation detected in voice patterns</p>
-                            <div style="background: #e9ecef; height: 8px; border-radius: 4px; overflow: hidden; margin: 1rem 0;">
-                                <div style="background: linear-gradient(90deg, #667eea, #764ba2); height: 100%; width: 60%; transition: width 0.3s ease;"></div>
-                            </div>
-                            
-                            <p><strong>Key Messages:</strong> <span style="color: #28a745;">Strong</span> - Successfully communicated main points</p>
-                            <div style="background: #e9ecef; height: 8px; border-radius: 4px; overflow: hidden; margin: 1rem 0;">
-                                <div style="background: linear-gradient(90deg, #667eea, #764ba2); height: 100%; width: 85%; transition: width 0.3s ease;"></div>
+                        <div id="ai-feedback-content">
+                            <!-- This will be populated by AI analysis -->
+                            <div style="text-align: center; padding: 2rem;">
+                                <div class="loading-spinner"></div>
+                                <p>Analyzing your performance...</p>
                             </div>
                         </div>
 
-                        <h4>Recommendations for Next Session</h4>
-                        <ul style="background: white; padding: 1.5rem; border-radius: 10px; margin: 1rem 0;">
-                            <li>Practice speaking more slowly during complex explanations</li>
-                            <li>Use more concrete examples to support your points</li>
-                            <li>Try the "bridging" technique when faced with difficult questions</li>
-                        </ul>
-
-                        <button class="btn btn-primary" onclick="submitFeedback()">Save Feedback & Return to Dashboard</button>
+                        <div class="navigation-buttons" style="margin-top: 2rem;">
+                            <button class="btn btn-secondary" onclick="goToPage(1)">Start New Session</button>
+                            <button class="btn btn-primary" onclick="window.location.reload()">Practice Again</button>
+                        </div>
                     </div>
                 </div>
             </div>
-
         </div>
     </div>
 
@@ -375,6 +345,10 @@
         const db = firebase.firestore();
         const googleProvider = new firebase.auth.GoogleAuthProvider();
     </script>
+
+    <script src="script.js"></script>
+</body>
+</html>
 
     <script src="script.js"></script>
 </body>
