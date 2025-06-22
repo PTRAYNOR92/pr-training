@@ -10,6 +10,7 @@ let scenarioDescription = '';
 let userRole = '';
 let companyContext = '';
 let uploadedFiles = [];
+let extractedTexts = {}; // Store extracted PDF texts
 let traitValues = {};
 
 // NEW: Top lines tracking
@@ -62,6 +63,7 @@ function resetApplicationState() {
     userRole = '';
     companyContext = '';
     uploadedFiles = [];
+    extractedTexts = {}; // Clear extracted texts
     traitValues = {};
     conversationHistory = [];
     isRecording = false;
@@ -314,6 +316,7 @@ function resetForNewSession() {
     userRole = '';
     companyContext = '';
     uploadedFiles = [];
+    extractedTexts = {}; // Clear extracted texts
     traitValues = {};
     conversationHistory = [];
     sessionRating = 0;
@@ -626,6 +629,11 @@ function acceptCookies() {
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
+    // Configure PDF.js worker
+    if (typeof pdfjsLib !== 'undefined') {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    }
+    
     initializeVoiceRecognition();
     setupEventListeners();
     
@@ -936,6 +944,13 @@ function handleFileUpload(event) {
     const files = Array.from(event.target.files);
     uploadedFiles = files;
     displayFiles(files, 'uploaded-files');
+    
+    // Extract text from PDFs
+    files.forEach(file => {
+        if (file.type === 'application/pdf') {
+            extractPDFText(file);
+        }
+    });
 }
 
 function displayFiles(files, containerId) {
@@ -950,6 +965,57 @@ function displayFiles(files, containerId) {
         fileDiv.innerHTML = `📄 ${file.name} <span style="color: #666; font-size: 0.9rem;">(${(file.size/1024).toFixed(1)} KB)</span>`;
         container.appendChild(fileDiv);
     });
+}
+
+// PDF Text Extraction Function
+async function extractPDFText(file) {
+    try {
+        console.log('Extracting text from PDF:', file.name);
+        
+        // Show loading indicator
+        const container = document.getElementById('uploaded-files');
+        const loadingDiv = document.createElement('div');
+        loadingDiv.id = `loading-${file.name}`;
+        loadingDiv.style.cssText = 'margin: 0.5rem 0; padding: 0.5rem; background: #e3f2fd; border-radius: 5px; font-size: 0.875rem; color: #1976d2;';
+        loadingDiv.innerHTML = `⏳ Extracting text from ${file.name}...`;
+        container.appendChild(loadingDiv);
+        
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+        let fullText = '';
+        
+        // Extract text from each page
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map(item => item.str).join(' ');
+            fullText += pageText + '\n';
+        }
+        
+        // Store extracted text
+        extractedTexts[file.name] = fullText.substring(0, 3000); // Limit to 3000 chars
+        
+        // Update UI
+        const loadingElement = document.getElementById(`loading-${file.name}`);
+        if (loadingElement) {
+            loadingElement.innerHTML = `✅ Text extracted from ${file.name} (${fullText.length} characters)`;
+            loadingElement.style.background = '#e8f5e9';
+            loadingElement.style.color = '#2e7d32';
+        }
+        
+        console.log('PDF extraction complete:', file.name, 'Characters:', fullText.length);
+        
+    } catch (error) {
+        console.error('Error extracting PDF text:', error);
+        
+        // Show error in UI
+        const loadingElement = document.getElementById(`loading-${file.name}`);
+        if (loadingElement) {
+            loadingElement.innerHTML = `⚠️ Could not extract text from ${file.name} - file will be referenced by name only`;
+            loadingElement.style.background = '#fff3cd';
+            loadingElement.style.color = '#856404';
+        }
+    }
 }
 
 function updateSummary() {
@@ -1286,7 +1352,19 @@ async function getAIResponse(userMessage) {
     if (uploadedFiles.length > 0) {
         contextualInfo += '\n\nDocument Context:';
         contextualInfo += `\nUploaded Materials: ${uploadedFiles.map(f => f.name).join(', ')}`;
-        contextualInfo += '\n(Note: The user has provided these reference materials for context)';
+        
+        // Add extracted PDF text if available
+        const extractedTextsList = Object.entries(extractedTexts);
+        if (extractedTextsList.length > 0) {
+            contextualInfo += '\n\nExtracted Document Content:';
+            extractedTextsList.forEach(([filename, text]) => {
+                if (text && text.trim()) {
+                    contextualInfo += `\n\nFrom ${filename}:\n${text.substring(0, 1000)}...`; // Limit each file to 1000 chars
+                }
+            });
+        } else {
+            contextualInfo += '\n(Note: The user has provided these reference materials for context)';
+        }
     }
     
     // Combine all context
