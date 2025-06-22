@@ -1,4 +1,5 @@
 // Firebase Authentication Variables
+le// Firebase Authentication Variables
 let currentUser = null;
 let sessionRating = 0;
 
@@ -751,6 +752,27 @@ const systemPrompts = {
     'interview-supportive-developer': 'Focus on potential and growth mindset over perfect answers. Ask about learning experiences, how they handle failure, what they want to develop. Probe for curiosity, adaptability, and genuine enthusiasm for growth using supportive but thorough questioning techniques. Build on their examples positively while still challenging them. Keep responses to 1-2 sentences maximum.'
 };
 
+// Cookie notice functionality
+function checkCookieNotice() {
+    // Check if user has already seen the notice
+    if (!localStorage.getItem('cookieNoticeAccepted')) {
+        const cookieNotice = document.getElementById('cookie-notice');
+        if (cookieNotice) {
+            cookieNotice.style.display = 'block';
+        }
+    }
+}
+
+function acceptCookies() {
+    // Mark as accepted
+    localStorage.setItem('cookieNoticeAccepted', 'true');
+    // Hide notice
+    const cookieNotice = document.getElementById('cookie-notice');
+    if (cookieNotice) {
+        cookieNotice.style.display = 'none';
+    }
+}
+
 // Initialize the application (modified for Firebase)
 document.addEventListener('DOMContentLoaded', function() {
     initializeVoiceRecognition();
@@ -773,6 +795,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Also try loading after a delay
         setTimeout(() => speechSynthesis.getVoices(), 100);
     }
+    
+    // Check cookie notice
+    checkCookieNotice();
     
     // Ensure login page is shown initially
     console.log('🔥 App loaded - waiting for Firebase auth...');
@@ -1669,3 +1694,6 @@ window.signInWithEmail = signInWithEmail;
 window.signUpWithEmail = signUpWithEmail;
 window.signOut = signOut;
 window.checkFormFields = checkFormFields;
+
+// Cookie notice function (make global)
+window.acceptCookies = acceptCookies;
