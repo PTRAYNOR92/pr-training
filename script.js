@@ -9,8 +9,8 @@ let selectedPersona = '';
 let scenarioDescription = '';
 let userRole = '';
 let companyContext = '';
-let uploadedFiles = [];
-let extractedTexts = {}; // Store extracted PDF texts
+let policyFiles = [];
+let briefingFiles = [];
 let traitValues = {};
 
 // NEW: Top lines tracking
@@ -62,8 +62,8 @@ function resetApplicationState() {
     scenarioDescription = '';
     userRole = '';
     companyContext = '';
-    uploadedFiles = [];
-    extractedTexts = {}; // Clear extracted texts
+    policyFiles = [];
+    briefingFiles = [];
     traitValues = {};
     conversationHistory = [];
     isRecording = false;
@@ -315,8 +315,8 @@ function resetForNewSession() {
     scenarioDescription = '';
     userRole = '';
     companyContext = '';
-    uploadedFiles = [];
-    extractedTexts = {}; // Clear extracted texts
+    policyFiles = [];
+    briefingFiles = [];
     traitValues = {};
     conversationHistory = [];
     sessionRating = 0;
@@ -364,8 +364,11 @@ function resetForNewSession() {
     if (nextBtn4) nextBtn4.disabled = true;
     
     // Clear file uploads
-    const fileContainer = document.getElementById('uploaded-files');
-    if (fileContainer) fileContainer.innerHTML = '';
+    const fileContainers = ['policy-files', 'briefing-files'];
+    fileContainers.forEach(containerId => {
+        const container = document.getElementById(containerId);
+        if (container) container.innerHTML = '';
+    });
     
     // Clear chat
     const messagesContainer = document.getElementById('chat-messages');
@@ -571,40 +574,63 @@ const personas = {
     ]
 };
 
-// CORRECTED System prompts with proper key mapping (keep exactly the same)
+// UPDATED System prompts with more realistic question lengths
 const systemPrompts = {
-    // COMMITTEE PERSONAS - Keys must match exactly with persona IDs
-    'committee-forensic-chair': 'Channel the select committee chair style of figures like Yvette Cooper or Hilary Benn - methodical, evidence-based questioning that builds cases systematically. Reference previous witness testimony, maintain formal parliamentary courtesy but be relentless in pursuing facts. Use the questioning approach seen in Hansard transcripts - start with context-setting, then drill down systematically. Remember everything they\'ve said and build your case witness by witness. Keep responses to 1-2 sentences maximum.',
+    // COMMITTEE PERSONAS - Often ask longer, multi-part questions
+    'committee-forensic-chair': 'Channel the select committee chair style of figures like Yvette Cooper or Hilary Benn - methodical, evidence-based questioning that builds cases systematically. Reference previous witness testimony, maintain formal parliamentary courtesy but be relentless in pursuing facts. Use the questioning approach seen in Hansard transcripts - start with context-setting, then drill down systematically. Remember everything they\'ve said and build your case witness by witness. Keep responses focused but allow for proper context-setting - typically 1-3 sentences for most questions, occasionally longer for complex procedural matters.',
     
-    'committee-backbench-terrier': 'Embody the style of persistent backbench MPs like those who made their reputation holding power to account in select committees. You have no ministerial ambitions - just a burning need for truth. Apply the approach seen in parliamentary questioning where MPs circle back to unanswered questions multiple ways until getting real answers. You\'re not impressed by titles or evasions - you represent ordinary constituents who deserve straight answers. Keep responses to 1-2 sentences maximum.',
+    'committee-backbench-terrier': 'Embody the style of persistent backbench MPs like those who made their reputation holding power to account in select committees. You have no ministerial ambitions - just a burning need for truth. Apply the approach seen in parliamentary questioning where MPs circle back to unanswered questions multiple ways until getting real answers. You\'re not impressed by titles or evasions - you represent ordinary constituents who deserve straight answers. Keep questions punchy and direct - usually 1-2 sentences, but can build up with follow-ups.',
     
-    'committee-technical-specialist': 'Channel the approach of subject-matter expert MPs who sit on specialist committees - those with genuine expertise in policy areas. You know the legislation inside out, previous consultations, international comparisons. Use the technically precise questioning style seen in select committee transcripts that reveals whether witnesses really understand their brief. Catch when they misstate facts or dodge technical realities. Keep responses to 1-2 sentences maximum.',
+    'committee-technical-specialist': 'Channel the approach of subject-matter expert MPs who sit on specialist committees - those with genuine expertise in policy areas. You know the legislation inside out, previous consultations, international comparisons. Use the technically precise questioning style seen in select committee transcripts that reveals whether witnesses really understand their brief. Catch when they misstate facts or dodge technical realities. Questions can be longer when establishing technical context (2-3 sentences), but keep follow-ups sharp.',
 
-    // MEDIA PERSONAS  
-    'media-political-heavyweight': 'Channel the interviewing style of Jeremy Paxman and Andrew Neil - veteran political interviewers known for forensic preparation and refusing to accept evasive answers. You\'ve done your homework like they do - you know voting records, previous statements, contradictions. Apply their approach of circling back to unanswered questions and not being deflected by political spin. You represent viewers who want straight answers, using their confrontational but professional style. Keep responses to 1-2 sentences maximum.',
+    // MEDIA PERSONAS - Varied lengths based on style
+    'media-political-heavyweight': 'Channel the interviewing style of Jeremy Paxman and Andrew Neil - veteran political interviewers known for forensic preparation and refusing to accept evasive answers. You\'ve done your homework like they do - you know voting records, previous statements, contradictions. Apply their approach of circling back to unanswered questions and not being deflected by political spin. You represent viewers who want straight answers, using their confrontational but professional style. Mix sharp single questions with occasional longer setups when presenting evidence.',
     
-    'media-time-pressure-broadcaster': 'Use the radio interviewing style of John Humphrys and Nick Robinson on Radio 4 Today programme - fast-paced with tight time constraints and broad audience appeal. Apply their technique of cutting through jargon, pressing for simple explanations, and moving quickly between topics. Channel their approach of making complex issues accessible to ordinary listeners with time pressure and urgency. Keep responses to 1-2 sentences maximum.',
+    'media-time-pressure-broadcaster': 'Use the radio interviewing style of John Humphrys and Nick Robinson on Radio 4 Today programme - fast-paced with tight time constraints and broad audience appeal. Apply their technique of cutting through jargon, pressing for simple explanations, and moving quickly between topics. Channel their approach of making complex issues accessible to ordinary listeners with time pressure and urgency. Keep questions short and punchy - mostly single sentences, maximum 2.',
     
-    'media-investigative-journalist': 'Channel the investigative approach of journalists like those who spend weeks researching stories for programmes like Panorama or Dispatches. You have documents, sources, timeline contradictions. Build questioning like they do - each question serves a larger narrative you\'re constructing. Be patient but implacable like investigative journalists, following every thread methodically. Keep responses to 1-2 sentences maximum.',
+    'media-investigative-journalist': 'Channel the investigative approach of journalists like those who spend weeks researching stories for programmes like Panorama or Dispatches. You have documents, sources, timeline contradictions. Build questioning like they do - each question serves a larger narrative you\'re constructing. Be patient but implacable like investigative journalists, following every thread methodically. Can use longer questions when presenting evidence or context (2-3 sentences), but keep probing questions sharp.',
     
-    'media-sympathetic-professional': 'Use the interviewing approach of Emily Maitlis or Martha Kearney - respected broadcasters known for fair but thorough interviews. Give people space to explain complex issues like they do, while still asking tough questions when needed. Channel their style of being genuinely interested in understanding perspectives while maintaining journalistic integrity and public interest. Keep responses to 1-2 sentences maximum.',
+    'media-sympathetic-professional': 'Use the interviewing approach of Emily Maitlis or Martha Kearney - respected broadcasters known for fair but thorough interviews. Give people space to explain complex issues like they do, while still asking tough questions when needed. Channel their style of being genuinely interested in understanding perspectives while maintaining journalistic integrity and public interest. Vary between conversational single questions and more detailed follow-ups.',
 
-    // CONSULTATION PERSONAS
-    'consultation-concerned-local': 'You are a local resident whose life will be directly affected by this decision. You\'re not a policy expert - you\'re a real person with real concerns about your community, your family, your daily life. Ask emotional, practical questions about what this actually means for ordinary people like you. Stay grounded in personal impact, not policy theory. Remember their previous answers and hold them to commitments. Keep responses to 1-2 sentences maximum.',
+    // CONSULTATION PERSONAS - More conversational, varied lengths
+    'consultation-concerned-local': 'You are a local resident whose life will be directly affected by this decision. You\'re not a policy expert - you\'re a real person with real concerns about your community, your family, your daily life. Ask emotional, practical questions about what this actually means for ordinary people like you. Stay grounded in personal impact, not policy theory. Remember their previous answers and hold them to commitments. Mix short emotional reactions with longer personal context when sharing concerns.',
     
-    'consultation-business-voice': 'You are a local business owner trying to understand what this policy means for your livelihood. Think in practical terms - costs, compliance, timelines, paperwork. You\'re not hostile to progress but need to understand real-world implementation and economic impacts on small businesses like yours. Reference their previous statements about costs and timelines. Keep responses to 1-2 sentences maximum.',
+    'consultation-business-voice': 'You are a local business owner trying to understand what this policy means for your livelihood. Think in practical terms - costs, compliance, timelines, paperwork. You\'re not hostile to progress but need to understand real-world implementation and economic impacts on small businesses like yours. Reference their previous statements about costs and timelines. Questions can be longer when explaining business context, shorter when seeking specific clarifications.',
     
-    'consultation-informed-activist': 'You are a community activist who\'s done homework on this issue. You understand policy detail but approach from values-based perspective - social justice, environmental impact, community equity. Challenge officials to consider broader implications beyond their narrow brief, drawing on activist questioning techniques. Remember their commitments and challenge inconsistencies. Keep responses to 1-2 sentences maximum.',
+    'consultation-informed-activist': 'You are a community activist who\'s done homework on this issue. You understand policy detail but approach from values-based perspective - social justice, environmental impact, community equity. Challenge officials to consider broader implications beyond their narrow brief, drawing on activist questioning techniques. Remember their commitments and challenge inconsistencies. Mix passionate shorter challenges with longer questions that present research or community evidence.',
 
-    // INTERVIEW PERSONAS
-    'interview-senior-stakeholder': 'You are a senior executive evaluating whether this person can operate at the level required. Ask about strategic thinking, leadership examples, how they handle pressure and ambiguity. Assess cultural fit and whether they can represent the organization externally. Use executive-level questioning approach. Build on their previous answers to assess consistency. Keep responses to 1-2 sentences maximum.',
+    // INTERVIEW PERSONAS - Professional variation
+    'interview-senior-stakeholder': 'You are a senior executive evaluating whether this person can operate at the level required. Ask about strategic thinking, leadership examples, how they handle pressure and ambiguity. Assess cultural fit and whether they can represent the organization externally. Use executive-level questioning approach. Build on their previous answers to assess consistency. Vary between brief direct questions and longer scenario-based challenges.',
     
-    'interview-technical-evaluator': 'You are a technical expert evaluating actual competency, not just resume claims. Ask specific technical questions, present scenarios, test problem-solving in real-time. Distinguish between theoretical knowledge and practical experience through hands-on technical assessment. Reference their previous technical claims and build complexity. Keep responses to 1-2 sentences maximum.',
+    'interview-technical-evaluator': 'You are a technical expert evaluating actual competency, not just resume claims. Ask specific technical questions, present scenarios, test problem-solving in real-time. Distinguish between theoretical knowledge and practical experience through hands-on technical assessment. Reference their previous technical claims and build complexity. Technical questions can be longer when setting up problems, follow-ups are typically shorter.',
     
-    'interview-panel-perspective': 'Represent multiple perspectives in this interview - sometimes technical, sometimes managerial, sometimes cultural fit. Shift between different types of questions as if different panel members are speaking. Evaluate comprehensively across all dimensions using varied panel interview techniques. Remember all their answers from different angles. Keep responses to 1-2 sentences maximum.',
+    'interview-panel-perspective': 'Represent multiple perspectives in this interview - sometimes technical, sometimes managerial, sometimes cultural fit. Shift between different types of questions as if different panel members are speaking. Evaluate comprehensively across all dimensions using varied panel interview techniques. Remember all their answers from different angles. Natural variation in question length as different "panel members" have different styles.',
     
-    'interview-supportive-developer': 'Focus on potential and growth mindset over perfect answers. Ask about learning experiences, how they handle failure, what they want to develop. Probe for curiosity, adaptability, and genuine enthusiasm for growth using supportive but thorough questioning techniques. Build on their examples positively while still challenging them. Keep responses to 1-2 sentences maximum.'
+    'interview-supportive-developer': 'Focus on potential and growth mindset over perfect answers. Ask about learning experiences, how they handle failure, what they want to develop. Probe for curiosity, adaptability, and genuine enthusiasm for growth using supportive but thorough questioning techniques. Build on their examples positively while still challenging them. Mix encouraging shorter questions with more detailed exploratory ones.'
 };
+
+// Function to clean responses and ensure single message blocks
+function cleanInterviewerResponse(response) {
+    // Remove any line breaks that might cause double boxes
+    let cleaned = response.replace(/\n\n+/g, ' ').replace(/\n/g, ' ').trim();
+    
+    // Remove any markdown or formatting that could cause issues
+    cleaned = cleaned.replace(/\*\*/g, '').replace(/\*/g, '');
+    
+    // Ensure proper spacing
+    cleaned = cleaned.replace(/\s+/g, ' ');
+    
+    // Fix common punctuation issues that might cause splitting
+    cleaned = cleaned.replace(/\.\s*\./g, '.').replace(/\?\s*\?/g, '?');
+    
+    // Log if we made significant changes
+    if (response !== cleaned) {
+        console.log('Cleaned response from:', response);
+        console.log('To:', cleaned);
+    }
+    
+    return cleaned;
+}
 
 // Cookie notice functionality
 function checkCookieNotice() {
@@ -629,11 +655,6 @@ function acceptCookies() {
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
-    // Configure PDF.js worker
-    if (typeof pdfjsLib !== 'undefined') {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-    }
-    
     initializeVoiceRecognition();
     setupEventListeners();
     
@@ -841,13 +862,21 @@ function updateStep(stepNumber) {
 }
 
 function setupFileUploadListeners() {
-    const materialsInput = document.getElementById('materials-input');
+    const policyInput = document.getElementById('policy-input');
+    const briefingInput = document.getElementById('briefing-input');
     
-    if (materialsInput && !materialsInput.hasAttribute('data-listener')) {
-        materialsInput.addEventListener('change', function(e) {
-            handleFileUpload(e);
+    if (policyInput && !policyInput.hasAttribute('data-listener')) {
+        policyInput.addEventListener('change', function(e) {
+            handleFileUpload(e, 'policy');
         });
-        materialsInput.setAttribute('data-listener', 'true');
+        policyInput.setAttribute('data-listener', 'true');
+    }
+    
+    if (briefingInput && !briefingInput.hasAttribute('data-listener')) {
+        briefingInput.addEventListener('change', function(e) {
+            handleFileUpload(e, 'briefing');
+        });
+        briefingInput.setAttribute('data-listener', 'true');
     }
 }
 
@@ -940,17 +969,16 @@ function loadTraitSliders() {
     });
 }
 
-function handleFileUpload(event) {
+function handleFileUpload(event, type) {
     const files = Array.from(event.target.files);
-    uploadedFiles = files;
-    displayFiles(files, 'uploaded-files');
     
-    // Extract text from PDFs
-    files.forEach(file => {
-        if (file.type === 'application/pdf') {
-            extractPDFText(file);
-        }
-    });
+    if (type === 'policy') {
+        policyFiles = files;
+        displayFiles(files, 'policy-files');
+    } else if (type === 'briefing') {
+        briefingFiles = files;
+        displayFiles(files, 'briefing-files');
+    }
 }
 
 function displayFiles(files, containerId) {
@@ -965,57 +993,6 @@ function displayFiles(files, containerId) {
         fileDiv.innerHTML = `📄 ${file.name} <span style="color: #666; font-size: 0.9rem;">(${(file.size/1024).toFixed(1)} KB)</span>`;
         container.appendChild(fileDiv);
     });
-}
-
-// PDF Text Extraction Function
-async function extractPDFText(file) {
-    try {
-        console.log('Extracting text from PDF:', file.name);
-        
-        // Show loading indicator
-        const container = document.getElementById('uploaded-files');
-        const loadingDiv = document.createElement('div');
-        loadingDiv.id = `loading-${file.name}`;
-        loadingDiv.style.cssText = 'margin: 0.5rem 0; padding: 0.5rem; background: #e3f2fd; border-radius: 5px; font-size: 0.875rem; color: #1976d2;';
-        loadingDiv.innerHTML = `⏳ Extracting text from ${file.name}...`;
-        container.appendChild(loadingDiv);
-        
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-        let fullText = '';
-        
-        // Extract text from each page
-        for (let i = 1; i <= pdf.numPages; i++) {
-            const page = await pdf.getPage(i);
-            const textContent = await page.getTextContent();
-            const pageText = textContent.items.map(item => item.str).join(' ');
-            fullText += pageText + '\n';
-        }
-        
-        // Store extracted text
-        extractedTexts[file.name] = fullText.substring(0, 3000); // Limit to 3000 chars
-        
-        // Update UI
-        const loadingElement = document.getElementById(`loading-${file.name}`);
-        if (loadingElement) {
-            loadingElement.innerHTML = `✅ Text extracted from ${file.name} (${fullText.length} characters)`;
-            loadingElement.style.background = '#e8f5e9';
-            loadingElement.style.color = '#2e7d32';
-        }
-        
-        console.log('PDF extraction complete:', file.name, 'Characters:', fullText.length);
-        
-    } catch (error) {
-        console.error('Error extracting PDF text:', error);
-        
-        // Show error in UI
-        const loadingElement = document.getElementById(`loading-${file.name}`);
-        if (loadingElement) {
-            loadingElement.innerHTML = `⚠️ Could not extract text from ${file.name} - file will be referenced by name only`;
-            loadingElement.style.background = '#fff3cd';
-            loadingElement.style.color = '#856404';
-        }
-    }
 }
 
 function updateSummary() {
@@ -1135,8 +1112,6 @@ function startTraining() {
     // Collect top lines
     collectTopLines();
     
-    // Files are already in uploadedFiles variable
-    
     // Skip API key modal - keys are embedded
     beginTrainingSession();
 }
@@ -1198,6 +1173,7 @@ function handleKeyPress(event) {
     }
 }
 
+// UPDATED sendMessage function with response cleaning
 async function sendMessage() {
     const input = document.getElementById('user-input');
     if (!input) return;
@@ -1224,10 +1200,13 @@ async function sendMessage() {
     const messagesContainer = document.getElementById('chat-messages');
     if (messagesContainer) {
         messagesContainer.appendChild(typingDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
     
     try {
-        const response = await getAIResponse(message);
+        const rawResponse = await getAIResponse(message);
+        const response = cleanInterviewerResponse(rawResponse);
+        
         const typingElement = document.getElementById('typing-indicator');
         if (typingElement) {
             typingElement.remove();
@@ -1240,10 +1219,11 @@ async function sendMessage() {
             timestamp: new Date().toISOString()
         });
         
+        // Add message as a single block
         addMessage(response, 'interviewer');
         
-        // Convert response to speech using your secure API
-        console.log('🔊 Attempting to speak response:', response.substring(0, 50) + '...');
+        // Convert response to speech
+        console.log('🔊 Speaking response:', response.substring(0, 50) + '...');
         await speakResponse(response);
         
         updateVoiceStatus('ready', 'Ready for voice input');
@@ -1259,46 +1239,39 @@ async function sendMessage() {
     }
 }
 
+// UPDATED addMessage function to ensure single blocks
 function addMessage(message, sender) {
     const messagesContainer = document.getElementById('chat-messages');
     if (!messagesContainer) return;
+    
+    // Clean the message one more time to be safe
+    const cleanedMessage = message.replace(/\n+/g, ' ').trim();
     
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${sender}`;
     
     if (sender === 'interviewer') {
-        messageDiv.innerHTML = `<strong>Interviewer:</strong> ${message}`;
+        messageDiv.innerHTML = `<strong>Interviewer:</strong> ${cleanedMessage}`;
     } else {
-        messageDiv.innerHTML = `<strong>You:</strong> ${message}`;
+        messageDiv.innerHTML = `<strong>You:</strong> ${cleanedMessage}`;
     }
     
     messagesContainer.appendChild(messageDiv);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// Updated AI Response function with top lines tracking
+// UPDATED getAIResponse function with formatting instructions
 async function getAIResponse(userMessage) {
-    // Fixed persona mapping with debugging
     const personaKey = `${selectedScenario}-${selectedPersona}`;
     
-    // Debug: Show what we're looking for
-    console.log('🔍 Debug Info:');
-    console.log('Selected Scenario:', selectedScenario);
-    console.log('Selected Persona:', selectedPersona);
-    console.log('Looking for key:', personaKey);
+    console.log('🔍 Getting response for:', personaKey);
     
-    // Get the system prompt with better fallback
+    // Use the updated prompts with more natural lengths
     let systemPrompt = systemPrompts[personaKey];
     
     if (!systemPrompt) {
         console.warn('❌ No prompt found for:', personaKey);
-        console.log('Available keys:', Object.keys(systemPrompts));
-        
-        // Fallback to a basic prompt
-        systemPrompt = 'You are a professional interviewer conducting a training session. Ask relevant questions about the scenario and remember their previous answers. Keep responses to 1-2 sentences maximum.';
-        console.log('✅ Using fallback prompt');
-    } else {
-        console.log('✅ Found matching prompt');
+        systemPrompt = 'You are a professional interviewer conducting a training session. Ask relevant questions that feel natural and realistic. Vary your question length based on context - some questions are short and direct, others need more setup. Remember their previous answers and build on them.';
     }
     
     // Build conversation memory context
@@ -1314,9 +1287,6 @@ async function getAIResponse(userMessage) {
         });
         conversationContext += '\nREMEMBER: Reference their previous answers. Point out contradictions. Build on what they\'ve said. Be reactive, not generic.\n';
     }
-    
-    // Add trait customization
-    let traitInstructions = '\n\nCustomized traits for this session:\n';
     
     // Add scenario context
     let scenarioContext = '';
@@ -1336,7 +1306,8 @@ async function getAIResponse(userMessage) {
         scenarioContext += '\nOccasionally test whether they can naturally work these messages into their responses.';
     }
     
-    // Build trait instructions - simplified to avoid undefined errors
+    // Build trait instructions
+    let traitInstructions = '\n\nCustomized traits for this session:\n';
     if (traitValues && typeof traitValues === 'object') {
         Object.entries(traitValues).forEach(([key, value]) => {
             if (value >= 8) {
@@ -1349,27 +1320,19 @@ async function getAIResponse(userMessage) {
     
     // Add document context
     let contextualInfo = '';
-    if (uploadedFiles.length > 0) {
+    if (policyFiles.length > 0 || briefingFiles.length > 0) {
         contextualInfo += '\n\nDocument Context:';
-        contextualInfo += `\nUploaded Materials: ${uploadedFiles.map(f => f.name).join(', ')}`;
-        
-        // Add extracted PDF text if available
-        const extractedTextsList = Object.entries(extractedTexts);
-        if (extractedTextsList.length > 0) {
-            contextualInfo += '\n\nExtracted Document Content:';
-            extractedTextsList.forEach(([filename, text]) => {
-                if (text && text.trim()) {
-                    contextualInfo += `\n\nFrom ${filename}:\n${text.substring(0, 1000)}...`; // Limit each file to 1000 chars
-                }
-            });
-        } else {
-            contextualInfo += '\n(Note: The user has provided these reference materials for context)';
+        if (policyFiles.length > 0) {
+            contextualInfo += `\nRelevant Documents: ${policyFiles.map(f => f.name).join(', ')}`;
+        }
+        if (briefingFiles.length > 0) {
+            contextualInfo += `\nBriefing Materials: ${briefingFiles.map(f => f.name).join(', ')}`;
         }
     }
     
-    // Combine all context
+    // Combine all context with formatting instruction
     const fullPrompt = systemPrompt + conversationContext + traitInstructions + scenarioContext + contextualInfo + 
-        '\n\nIMPORTANT: Keep responses to 1-2 sentences maximum. Be conversational and human. Reference their previous answers. Stay in character.';
+        '\n\nIMPORTANT: Deliver your response as a single, natural flowing statement or question. Do not use line breaks or separate paragraphs. Ensure your response reads naturally when spoken aloud.';
     
     console.log('📝 Final prompt preview:', fullPrompt.substring(0, 200) + '...');
     
@@ -1392,7 +1355,7 @@ async function getAIResponse(userMessage) {
                         content: userMessage
                     }
                 ],
-                max_tokens: 100,
+                max_tokens: 150, // Increased for more natural responses
                 temperature: 0.8
             })
         });
