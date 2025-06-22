@@ -9,8 +9,7 @@ let selectedPersona = '';
 let scenarioDescription = '';
 let userRole = '';
 let companyContext = '';
-let policyFiles = [];
-let briefingFiles = [];
+let uploadedFiles = [];
 let traitValues = {};
 
 // NEW: Top lines tracking
@@ -62,8 +61,7 @@ function resetApplicationState() {
     scenarioDescription = '';
     userRole = '';
     companyContext = '';
-    policyFiles = [];
-    briefingFiles = [];
+    uploadedFiles = [];
     traitValues = {};
     conversationHistory = [];
     isRecording = false;
@@ -315,8 +313,7 @@ function resetForNewSession() {
     scenarioDescription = '';
     userRole = '';
     companyContext = '';
-    policyFiles = [];
-    briefingFiles = [];
+    uploadedFiles = [];
     traitValues = {};
     conversationHistory = [];
     sessionRating = 0;
@@ -364,11 +361,8 @@ function resetForNewSession() {
     if (nextBtn4) nextBtn4.disabled = true;
     
     // Clear file uploads
-    const fileContainers = ['policy-files', 'briefing-files'];
-    fileContainers.forEach(containerId => {
-        const container = document.getElementById(containerId);
-        if (container) container.innerHTML = '';
-    });
+    const fileContainer = document.getElementById('uploaded-files');
+    if (fileContainer) fileContainer.innerHTML = '';
     
     // Clear chat
     const messagesContainer = document.getElementById('chat-messages');
@@ -839,21 +833,13 @@ function updateStep(stepNumber) {
 }
 
 function setupFileUploadListeners() {
-    const policyInput = document.getElementById('policy-input');
-    const briefingInput = document.getElementById('briefing-input');
+    const materialsInput = document.getElementById('materials-input');
     
-    if (policyInput && !policyInput.hasAttribute('data-listener')) {
-        policyInput.addEventListener('change', function(e) {
-            handleFileUpload(e, 'policy');
+    if (materialsInput && !materialsInput.hasAttribute('data-listener')) {
+        materialsInput.addEventListener('change', function(e) {
+            handleFileUpload(e);
         });
-        policyInput.setAttribute('data-listener', 'true');
-    }
-    
-    if (briefingInput && !briefingInput.hasAttribute('data-listener')) {
-        briefingInput.addEventListener('change', function(e) {
-            handleFileUpload(e, 'briefing');
-        });
-        briefingInput.setAttribute('data-listener', 'true');
+        materialsInput.setAttribute('data-listener', 'true');
     }
 }
 
@@ -946,16 +932,10 @@ function loadTraitSliders() {
     });
 }
 
-function handleFileUpload(event, type) {
+function handleFileUpload(event) {
     const files = Array.from(event.target.files);
-    
-    if (type === 'policy') {
-        policyFiles = files;
-        displayFiles(files, 'policy-files');
-    } else if (type === 'briefing') {
-        briefingFiles = files;
-        displayFiles(files, 'briefing-files');
-    }
+    uploadedFiles = files;
+    displayFiles(files, 'uploaded-files');
 }
 
 function displayFiles(files, containerId) {
@@ -1088,6 +1068,8 @@ function startTraining() {
     
     // Collect top lines
     collectTopLines();
+    
+    // Files are already in uploadedFiles variable
     
     // Skip API key modal - keys are embedded
     beginTrainingSession();
@@ -1301,14 +1283,10 @@ async function getAIResponse(userMessage) {
     
     // Add document context
     let contextualInfo = '';
-    if (policyFiles.length > 0 || briefingFiles.length > 0) {
+    if (uploadedFiles.length > 0) {
         contextualInfo += '\n\nDocument Context:';
-        if (policyFiles.length > 0) {
-            contextualInfo += `\nRelevant Documents: ${policyFiles.map(f => f.name).join(', ')}`;
-        }
-        if (briefingFiles.length > 0) {
-            contextualInfo += `\nBriefing Materials: ${briefingFiles.map(f => f.name).join(', ')}`;
-        }
+        contextualInfo += `\nUploaded Materials: ${uploadedFiles.map(f => f.name).join(', ')}`;
+        contextualInfo += '\n(Note: The user has provided these reference materials for context)';
     }
     
     // Combine all context
