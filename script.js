@@ -21,8 +21,15 @@ let topLinesTracking = {};
 let conversationHistory = [];
 let isRecording = false;
 
-// CRITICAL FIX: Add processing lock to prevent multiple messages
+// CRITICAL FIX: Add message queue and duplicate prevention
 let isProcessingMessage = false;
+let messageQueue = [];
+let lastInterviewerMessage = '';
+let lastInterviewerMessageTime = 0;
+let lastMessageTime = 0;
+let currentMessageId = null;
+let lastAPICallTime = 0;
+let processingTimeout = null;
 
 // Voice recognition variables
 let recognition = null;
@@ -74,6 +81,27 @@ function resetApplicationState() {
     useElevenLabs = true; // Reset voice preference
     topLines = []; // Reset top lines
     topLinesTracking = {}; // Reset tracking
+    
+    // Reset message tracking
+    lastInterviewerMessage = '';
+    lastInterviewerMessageTime = 0;
+    lastMessageTime = 0;
+    currentMessageId = null;
+    lastAPICallTime = 0;
+    
+    // Clear any pending timeouts
+    if (processingTimeout) {
+        clearTimeout(processingTimeout);
+        processingTimeout = null;
+    }
+    
+    // Clear any pending timeouts
+    if (processingTimeout) {
+        clearTimeout(processingTimeout);
+        processingTimeout = null;
+    }
+    lastAPICallTime = 0;
+    currentMessageId = null;
     
     // Reset UI
     document.querySelectorAll('.scenario-card').forEach(card => {
@@ -291,6 +319,11 @@ function displayFormattedFeedback(analysis) {
 // Modified endTraining function
 function endTraining() {
     if (confirm('Are you sure you want to end this training session?')) {
+        // Clear any pending timeouts
+        if (processingTimeout) {
+            clearTimeout(processingTimeout);
+            processingTimeout = null;
+        }
         // Stop recording if active
         if (isRecording && recognition) {
             recognition.stop();
@@ -330,6 +363,11 @@ function resetForNewSession() {
     topLines = [];
     topLinesTracking = {};
     isProcessingMessage = false; // Reset processing lock
+    
+    // Reset message tracking
+    lastInterviewerMessage = '';
+    lastInterviewerMessageTime = 0;
+    lastMessageTime = 0;
     
     // Reset voice settings
     useElevenLabs = true;
@@ -639,8 +677,19 @@ function acceptCookies() {
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Starting Training Pro with double-message prevention...');
+    
     initializeVoiceRecognition();
     setupEventListeners();
+    
+    // Add global click handler to detect duplicate button clicks
+    document.addEventListener('click', function(e) {
+        if (e.target.matches('.chat-input button') && isProcessingMessage) {
+            console.warn('Send button clicked while processing - blocked!');
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }, true);
     
     // Load available voices for fallback TTS
     if ('speechSynthesis' in window) {
@@ -738,10 +787,16 @@ function initializeVoiceRecognition() {
                 updateVoiceButton('idle');
                 updateVoiceStatus('ready', 'Ready for voice input');
                 
-                // Send the message if there's content
+                // Send the message if there's content (but check processing lock first)
                 const inputField = document.getElementById('user-input');
-                if (inputField && inputField.value.trim()) {
-                    sendMessage();
+                if (inputField && inputField.value.trim() && !isProcessingMessage) {
+                    // Check cooldown
+                    const now = Date.now();
+                    if (now - lastMessageTime >= MESSAGE_COOLDOWN) {
+                        sendMessage();
+                    } else {
+                        console.log('Cooldown active, not sending message from voice end');
+                    }
                 }
             } else {
                 // If we're supposed to be recording but recognition ended, restart it
@@ -1016,10 +1071,17 @@ function updateSummary() {
     }
 }
 
-// UPDATED: Enhanced voice control to only stop on manual click
+// UPDATED: Enhanced voice control with processing protection
 function toggleVoiceRecognition() {
     if (!recognition) {
         alert('Voice recognition not supported in this browser');
+        return;
+    }
+    
+    // If already processing a message, don't allow voice recording
+    if (isProcessingMessage) {
+        console.log('Currently processing a message, cannot start voice recording');
+        alert('Please wait for the current response before recording again');
         return;
     }
     
@@ -1035,9 +1097,21 @@ function toggleVoiceRecognition() {
         const inputField = document.getElementById('user-input');
         if (inputField && inputField.value.trim()) {
             updateVoiceStatus('processing', 'Processing...');
-            sendMessage();
+            
+            // Add a small delay to ensure recognition has fully stopped
+            setTimeout(() => {
+                sendMessage();
+            }, 200);
         }
     } else {
+        // Check cooldown before starting
+        const now = Date.now();
+        if (now - lastMessageTime < MESSAGE_COOLDOWN) {
+            console.log('Cooldown active, please wait...');
+            alert('Please wait a moment before recording again');
+            return;
+        }
+        
         // Start recording
         console.log('Starting voice recognition...');
         try {
@@ -1104,6 +1178,19 @@ function beginTrainingSession() {
     // Reset processing lock
     isProcessingMessage = false;
     
+    // Reset message tracking for fresh session
+    lastInterviewerMessage = '';
+    lastInterviewerMessageTime = 0;
+    lastMessageTime = 0;
+    currentMessageId = null;
+    lastAPICallTime = 0;
+    
+    // Clear any pending timeouts
+    if (processingTimeout) {
+        clearTimeout(processingTimeout);
+        processingTimeout = null;
+    }
+    
     // Reset ElevenLabs flag for new session
     useElevenLabs = true;
     
@@ -1153,12 +1240,44 @@ function beginTrainingSession() {
 
 function handleKeyPress(event) {
     if (event.key === 'Enter') {
+        event.preventDefault(); // Prevent default form submission
+        
+        // Check if we're already processing
+        if (isProcessingMessage) {
+            console.log('Already processing, ignoring Enter key...');
+            return;
+        }
+        
+        // Check cooldown
+        const now = Date.now();
+        if (now - lastMessageTime < MESSAGE_COOLDOWN) {
+            console.log('Cooldown active, ignoring Enter key...');
+            return;
+        }
+        
         sendMessage();
     }
 }
 
-// UPDATED sendMessage with processing lock
+// UPDATED sendMessage with AGGRESSIVE processing lock and debouncing
+const MESSAGE_COOLDOWN = 3000; // 3 second cooldown between messages
+
 async function sendMessage() {
+    // Generate unique message ID
+    const messageId = Date.now() + '-' + Math.random();
+    
+    // Check if we're already processing this exact message
+    if (currentMessageId === messageId) {
+        console.log('Duplicate message detected, ignoring...');
+        return;
+    }
+    // Check cooldown period
+    const now = Date.now();
+    if (now - lastMessageTime < MESSAGE_COOLDOWN) {
+        console.log('Message sent too quickly, enforcing cooldown...');
+        return;
+    }
+    
     // Check if already processing
     if (isProcessingMessage) {
         console.log('Already processing a message, ignoring...');
@@ -1171,41 +1290,75 @@ async function sendMessage() {
     const message = input.value.trim();
     if (!message) return;
     
-    // Set the processing lock
+    // AGGRESSIVE LOCK: Set multiple flags
     isProcessingMessage = true;
+    lastMessageTime = now;
+    currentMessageId = messageId;
     
-    // Disable UI controls
+    // Clear input IMMEDIATELY to prevent double sends
+    const messageToSend = message;
+    input.value = '';
+    
+    // Disable ALL interactive elements
     const sendButton = document.querySelector('.chat-input button');
     const voiceButton = document.getElementById('voice-toggle');
-    if (sendButton) sendButton.disabled = true;
-    if (voiceButton) voiceButton.disabled = true;
+    const inputField = document.getElementById('user-input');
+    
+    if (sendButton) {
+        sendButton.disabled = true;
+        sendButton.style.opacity = '0.5';
+        sendButton.style.cursor = 'not-allowed';
+    }
+    if (voiceButton) {
+        voiceButton.disabled = true;
+        voiceButton.style.opacity = '0.5';
+        voiceButton.style.cursor = 'not-allowed';
+    }
+    if (inputField) {
+        inputField.disabled = true;
+        inputField.placeholder = 'Processing...';
+    }
     
     try {
+        console.log(`📤 Sending message (ID: ${messageId}): "${messageToSend}"`);
+        
         // Add user message to conversation history
         conversationHistory.push({
             role: 'user',
-            content: message,
+            content: messageToSend,
             timestamp: new Date().toISOString()
         });
         
-        addMessage(message, 'user');
-        input.value = '';
+        addMessage(messageToSend, 'user');
         
-        // Show typing indicator
+        // Show typing indicator WITH UNIQUE ID
+        const typingId = 'typing-' + Date.now();
         const typingDiv = document.createElement('div');
         typingDiv.className = 'message interviewer';
         typingDiv.innerHTML = '<strong>Interviewer:</strong> <em>typing...</em>';
-        typingDiv.id = 'typing-indicator';
+        typingDiv.id = typingId;
         
         const messagesContainer = document.getElementById('chat-messages');
         if (messagesContainer) {
             messagesContainer.appendChild(typingDiv);
         }
         
-        const response = await getAIResponse(message);
-        const typingElement = document.getElementById('typing-indicator');
+        // Add extra safety delay
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const response = await getAIResponse(messageToSend);
+        console.log(`📥 Received AI response (ID: ${messageId}): "${response.substring(0, 50)}..."`);
+        
+        // Remove specific typing indicator
+        const typingElement = document.getElementById(typingId);
         if (typingElement) {
             typingElement.remove();
+        }
+        
+        // VERIFY we're still in the same message cycle
+        if (!isProcessingMessage) {
+            console.warn('Processing flag was cleared unexpectedly - aborting');
+            return;
         }
         
         // Add AI response to conversation history
@@ -1222,26 +1375,76 @@ async function sendMessage() {
         await speakResponse(response);
         
         updateVoiceStatus('ready', 'Ready for voice input');
+        
     } catch (error) {
-        const typingElement = document.getElementById('typing-indicator');
-        if (typingElement) {
-            typingElement.remove();
-        }
+        const typingElements = document.querySelectorAll('[id^="typing-"]');
+        typingElements.forEach(el => el.remove());
         
         addMessage('Sorry, there was an error. Please check your connection and try again.', 'interviewer');
         console.error('Error in sendMessage:', error);
         updateVoiceStatus('error', 'Error occurred');
+        
     } finally {
-        // Always release the lock and re-enable UI
-        isProcessingMessage = false;
-        if (sendButton) sendButton.disabled = false;
-        if (voiceButton) voiceButton.disabled = false;
+        // Always release the lock and re-enable UI with a delay
+        processingTimeout = setTimeout(() => {
+            isProcessingMessage = false;
+            currentMessageId = null;
+            
+            const sendButton = document.querySelector('.chat-input button');
+            const voiceButton = document.getElementById('voice-toggle');
+            const inputField = document.getElementById('user-input');
+            
+            if (sendButton) {
+                sendButton.disabled = false;
+                sendButton.style.opacity = '1';
+                sendButton.style.cursor = 'pointer';
+            }
+            if (voiceButton) {
+                voiceButton.disabled = false;
+                voiceButton.style.opacity = '1';
+                voiceButton.style.cursor = 'pointer';
+            }
+            if (inputField) {
+                inputField.disabled = false;
+                inputField.placeholder = 'Or type your response...';
+            }
+        }, 1000); // 1 second delay before re-enabling
     }
 }
 
 function addMessage(message, sender) {
     const messagesContainer = document.getElementById('chat-messages');
     if (!messagesContainer) return;
+    
+    // CRITICAL: Prevent duplicate interviewer messages
+    if (sender === 'interviewer') {
+        const now = Date.now();
+        
+        // Check if this is the same message as the last one (or very similar)
+        if (lastInterviewerMessage && 
+            (message === lastInterviewerMessage || 
+             message.substring(0, 50) === lastInterviewerMessage.substring(0, 50))) {
+            console.warn('🚫 DUPLICATE MESSAGE BLOCKED:', {
+                newMessage: message.substring(0, 50) + '...',
+                lastMessage: lastInterviewerMessage.substring(0, 50) + '...',
+                timeDiff: now - lastInterviewerMessageTime
+            });
+            return;
+        }
+        
+        // Check if messages are coming too quickly (within 2 seconds)
+        if (now - lastInterviewerMessageTime < 2000) {
+            console.warn('🚫 MESSAGE TOO QUICK - BLOCKED:', {
+                message: message.substring(0, 50) + '...',
+                timeSinceLastMessage: now - lastInterviewerMessageTime
+            });
+            return;
+        }
+        
+        console.log('✅ Adding interviewer message:', message.substring(0, 50) + '...');
+        lastInterviewerMessage = message;
+        lastInterviewerMessageTime = now;
+    }
     
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${sender}`;
@@ -1256,8 +1459,17 @@ function addMessage(message, sender) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// UPDATED AI Response function with stronger single message enforcement
+// UPDATED AI Response function with ABSOLUTE single message enforcement
+const API_COOLDOWN = 2000; // 2 second cooldown between API calls
+
 async function getAIResponse(userMessage) {
+    // Check API cooldown
+    const now = Date.now();
+    if (now - lastAPICallTime < API_COOLDOWN) {
+        console.error('API called too quickly - blocking!');
+        throw new Error('Please wait before sending another message');
+    }
+    lastAPICallTime = now;
     // Fixed persona mapping with debugging
     const personaKey = `${selectedScenario}-${selectedPersona}`;
     
@@ -1340,7 +1552,17 @@ async function getAIResponse(userMessage) {
     }
     
     // CRITICAL: Add the strongest possible single message instruction
-    const singleMessageEnforcement = '\n\nABSOLUTE CRITICAL INSTRUCTION: You MUST send your ENTIRE response as ONE SINGLE MESSAGE. NEVER split your response into multiple parts. NEVER send two consecutive messages. ALWAYS complete ALL your sentences fully. If you have multiple points to make, include them ALL in ONE message. This is the MOST IMPORTANT rule - violating it breaks the entire system.';
+    const singleMessageEnforcement = '\n\nABSOLUTE CRITICAL INSTRUCTION - VIOLATION WILL BREAK THE SYSTEM:\n' +
+        '1. You MUST send your ENTIRE response as ONE SINGLE MESSAGE.\n' +
+        '2. NEVER split your response into multiple parts.\n' +
+        '3. NEVER send two consecutive messages.\n' +
+        '4. NEVER send a follow-up message.\n' +
+        '5. ALWAYS complete ALL your sentences fully in ONE response.\n' +
+        '6. If you have multiple points, include them ALL in ONE message.\n' +
+        '7. ONE MESSAGE ONLY - This is the MOST IMPORTANT rule.\n' +
+        '8. After sending your message, you are DONE - do not send anything else.\n' +
+        '9. STOP after your first message - do not continue.\n' +
+        '10. This is a HARD STOP - ONE MESSAGE ONLY.';
     
     // Combine all context
     const fullPrompt = systemPrompt + conversationContext + traitInstructions + scenarioContext + contextualInfo + singleMessageEnforcement + 
@@ -1370,7 +1592,10 @@ async function getAIResponse(userMessage) {
                 max_tokens: 150, // Increased slightly for 1-4 sentences
                 temperature: 0.8,
                 n: 1, // Only generate one response
-                stop: null // Don't use stop sequences that might cut off responses
+                stop: null, // Don't use stop sequences that might cut off responses
+                stream: false, // Ensure we're not streaming
+                presence_penalty: 0.6, // Discourage repetition
+                frequency_penalty: 0.6 // Discourage repetition
             })
         });
         
@@ -1648,6 +1873,25 @@ function testVoices() {
     // speakResponse("Hello, this is a test of the voice system.");
 }
 
+// Debug function to check protection status
+function debugProtection() {
+    const now = Date.now();
+    console.log('🛡️ PROTECTION STATUS:');
+    console.log('- isProcessingMessage:', isProcessingMessage);
+    console.log('- currentMessageId:', currentMessageId);
+    console.log('- Time since last message:', now - lastMessageTime, 'ms');
+    console.log('- Time since last API call:', now - lastAPICallTime, 'ms');
+    console.log('- Last interviewer message:', lastInterviewerMessage?.substring(0, 50) + '...');
+    console.log('- Time since last interviewer message:', now - lastInterviewerMessageTime, 'ms');
+    console.log('- MESSAGE_COOLDOWN:', MESSAGE_COOLDOWN, 'ms');
+    console.log('- API_COOLDOWN:', API_COOLDOWN, 'ms');
+    console.log('- Buttons disabled:', {
+        send: document.querySelector('.chat-input button')?.disabled,
+        voice: document.getElementById('voice-toggle')?.disabled,
+        input: document.getElementById('user-input')?.disabled
+    });
+}
+
 // Global functions for onclick handlers
 window.goToPage = goToPage;
 window.selectScenario = selectScenario;
@@ -1663,6 +1907,7 @@ window.addTopLine = addTopLine;
 window.removeTopLine = removeTopLine;
 window.resetForNewSession = resetForNewSession;
 window.signOut = signOut;
+window.debugProtection = debugProtection;
 
 // Navigation handler
 window.handleNavClick = function(section) {
