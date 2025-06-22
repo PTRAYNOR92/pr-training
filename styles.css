@@ -125,7 +125,7 @@ nav {
     width: 100%;
 }
 
-/* Hero Section */
+/* Hero Section - Updated with Microphone Background */
 .hero {
     text-align: center;
     padding: 4rem 0;
@@ -255,7 +255,7 @@ nav {
     to { opacity: 1; }
 }
 
-/* Login Page Styles */
+/* Login Page Styles - Updated with Office Background */
 #login-page {
     background: linear-gradient(rgba(26, 31, 54, 0.9), rgba(44, 62, 80, 0.9)), 
                 url('https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=1920&q=80') center/cover no-repeat;
@@ -265,7 +265,7 @@ nav {
     justify-content: center;
 }
 
-/* Scenario Cards */
+/* Scenario Cards - Updated for 2x2 Grid */
 .scenario-selector h2 {
     font-size: 2.5rem;
     margin-bottom: 3rem;
@@ -275,7 +275,7 @@ nav {
 
 .scenarios {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 2rem;
     margin-bottom: 3rem;
 }
@@ -303,7 +303,7 @@ nav {
 
 .scenario-card img {
     width: 100%;
-    height: 200px;
+    height: 250px;
     object-fit: cover;
     display: block;
 }
@@ -892,6 +892,10 @@ nav {
     
     .scenarios {
         grid-template-columns: 1fr;
+    }
+    
+    .scenario-card img {
+        height: 200px;
     }
     
     .personas {
