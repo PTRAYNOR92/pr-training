@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy - Training Pro</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .privacy-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .privacy-container h1 {
+            color: #667eea;
+            margin-bottom: 2rem;
+        }
+        .privacy-container h2 {
+            color: #333;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+        .privacy-container p {
+            margin-bottom: 1rem;
+            line-height: 1.8;
+            color: #555;
+        }
+        .privacy-container ul {
+            margin-bottom: 1rem;
+            padding-left: 2rem;
+        }
+        .privacy-container li {
+            margin-bottom: 0.5rem;
+            color: #555;
+        }
+        .last-updated {
+            color: #888;
+            font-style: italic;
+            margin-bottom: 2rem;
+        }
+        .back-button {
+            display: inline-block;
+            margin-top: 2rem;
+            padding: 0.8rem 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .back-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">Training Pro</div>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="index.html#training">Training</a></li>
+                <li><a href="index.html#about">About</a></li>
+                <li><a href="privacy.html" class="active">Privacy</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <div class="container">
+        <div class="privacy-container">
+            <h1>Privacy Policy</h1>
+            <p class="last-updated">Last updated: June 2025</p>
+            
+            <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 2rem;">
+                <strong>Quick Navigation:</strong>
+                <a href="#what-we-collect" style="margin: 0 10px; color: #667eea;">What We Collect</a> |
+                <a href="#third-party" style="margin: 0 10px; color: #667eea;">Third-Party Services</a> |
+                <a href="#your-rights" style="margin: 0 10px; color: #667eea;">Your Rights</a> |
+                <a href="#best-practices" style="margin: 0 10px; color: #667eea;">Best Practices</a> |
+                <a href="#faq" style="margin: 0 10px; color: #667eea;">FAQ</a>
+            </div>
+
+            <div style="background: #d4edda; padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem; border: 2px solid #28a745;">
+                <h2 style="color: #155724; margin-top: 0;">🔒 Our Privacy Commitment</h2>
+                <p style="color: #155724; font-weight: 600; margin-bottom: 0.5rem;">What Training Pro does with your data:</p>
+                <ul style="color: #155724; margin-bottom: 0;">
+                    <li>✅ We do NOT save or store your conversations</li>
+                    <li>✅ We don't keep recordings or transcripts of your sessions</li>
+                    <li>✅ Your practice sessions exist only in your browser during use</li>
+                    <li>✅ We cannot access or review your training content</li>
+                </ul>
+                <p style="color: #b8600b; margin-top: 1rem; background: #fff3cd; padding: 0.75rem; border-radius: 5px; border: 1px solid #ffc107;">
+                    <strong>⚠️ Important:</strong> While we don't store your data, your conversations are processed by third-party AI services (OpenAI and ElevenLabs) to make the training work. See Section 4 for details.
+                </p>
+            </div>
+
+            <h2>1. Introduction</h2>
+            <p>Welcome to Training Pro. We believe great practice shouldn't compromise your privacy. This policy explains exactly what happens to your data when you use our platform.</p>
+            
+            <p><strong>The key points:</strong></p>
+            <ul>
+                <li>Training Pro doesn't store your conversations or training content</li>
+                <li>Your messages are processed by AI services (OpenAI and ElevenLabs) to generate responses</li>
+                <li>We only keep your email address for login - nothing else</li>
+                <li>We recommend using fictional scenarios when practicing with sensitive topics</li>
+            </ul>
+
+            <h2 id="what-we-collect">2. What We DO and DON'T Collect</h2>
+            
+            <p><strong>What We DO Collect:</strong></p>
+            <ul>
+                <li><strong>Account Information:</strong> Only your email address and password (securely managed by Firebase Authentication)</li>
+            </ul>
+            
+            <p><strong>What We DON'T Store:</strong></p>
+            <ul>
+                <li><strong>❌ NO Conversation Storage:</strong> Training Pro doesn't save your conversations anywhere</li>
+                <li><strong>❌ NO Voice Recordings:</strong> We don't keep any audio files</li>
+                <li><strong>❌ NO Transcripts:</strong> Your responses aren't stored in any database</li>
+                <li><strong>❌ NO Performance Data:</strong> We don't save your training performance or feedback</li>
+            </ul>
+            
+            <p style="background: #fff3cd; padding: 1rem; border-radius: 8px; border: 1px solid #ffc107;">
+                <strong>⚠️ However:</strong> Your conversations ARE sent to OpenAI (for AI responses) and ElevenLabs (for voice synthesis) during your session. While Training Pro doesn't store this data, these services receive and process it according to their own privacy policies.
+            </p>
+
+            <h2>3. How Your Data is Used</h2>
+            <p><strong>During your training session:</strong></p>
+            <ul>
+                <li><strong>Your messages → OpenAI:</strong> Sent to generate realistic interviewer responses</li>
+                <li><strong>AI responses → ElevenLabs:</strong> Sent to create voice output</li>
+                <li><strong>Your voice → Browser/Google:</strong> Processed to convert speech to text</li>
+                <li><strong>Session memory:</strong> Kept temporarily in your browser to maintain conversation context</li>
+            </ul>
+            
+            <p><strong>After your session ends:</strong></p>
+            <ul>
+                <li>Training Pro deletes all conversation data from browser memory</li>
+                <li>We have no record of what was discussed</li>
+                <li>Note: We cannot control whether third-party services retain data per their policies</li>
+            </ul>
+            
+            <p><strong>The only permanent data we keep:</strong></p>
+            <ul>
+                <li>Your email address (for login)</li>
+                <li>Encrypted password (managed by Firebase)</li>
+            </ul>
+
+            <h2 id="third-party">4. Third-Party Services - Important Information</h2>
+            <p style="background: #fff3cd; padding: 1rem; border-radius: 8px; border: 1px solid #ffc107;">
+                <strong>⚠️ Important:</strong> While Training Pro doesn't store your data, we use third-party services to power the AI conversations. These services receive and process your messages to function.
+            </p>
+            
+            <p><strong>Services we use:</strong></p>
+            <ul>
+                <li><strong>Firebase (Google):</strong> 
+                    <ul>
+                        <li>What they get: Only your email for authentication</li>
+                        <li>Privacy policy: <a href="https://firebase.google.com/support/privacy" target="_blank" style="color: #667eea;">Firebase Privacy</a></li>
+                    </ul>
+                </li>
+                <li><strong>OpenAI:</strong> 
+                    <ul>
+                        <li>What they get: Your messages and the AI's responses during training</li>
+                        <li>Their current policy: As of 2025, OpenAI states they don't train models on API data and retain it for up to 30 days for safety/abuse monitoring only</li>
+                        <li>Privacy policy: <a href="https://openai.com/policies/privacy-policy" target="_blank" style="color: #667eea;">OpenAI Privacy</a></li>
+                        <li>API data usage: <a href="https://openai.com/policies/api-data-usage-policies" target="_blank" style="color: #667eea;">OpenAI API Data Usage</a></li>
+                    </ul>
+                </li>
+                <li><strong>ElevenLabs:</strong> 
+                    <ul>
+                        <li>What they get: The AI's text responses to convert to speech</li>
+                        <li>Their data handling policies apply to this content</li>
+                        <li>Privacy policy: <a href="https://elevenlabs.io/privacy" target="_blank" style="color: #667eea;">ElevenLabs Privacy</a></li>
+                    </ul>
+                </li>
+                <li><strong>Web Speech API:</strong> 
+                    <ul>
+                        <li>Voice-to-text processing (varies by browser)</li>
+                        <li>Chrome/Edge: May send audio to Google/Microsoft servers for processing</li>
+                        <li>Other browsers: May process locally or use their own services</li>
+                        <li>Check your browser's privacy policy for details</li>
+                    </ul>
+                </li>
+            </ul>
+            
+            <p style="background: #e7f3ff; padding: 1rem; border-radius: 8px;">
+                <strong>What this means:</strong> While we design Training Pro to be privacy-focused and don't store your data ourselves, we cannot control how these third-party services handle the data they receive. If you're practicing with highly sensitive information, please review their privacy policies.
+            </p>
+
+            <h2>5. Data Storage and Security</h2>
+            <p><strong>What We Store (Very Little!):</strong></p>
+            <ul>
+                <li>Your email address</li>
+                <li>Encrypted password (managed by Firebase)</li>
+                <li>Account creation date</li>
+                <li><strong>That's literally it!</strong> 🎉</li>
+            </ul>
+            
+            <p><strong>What We DON'T Store:</strong></p>
+            <ul>
+                <li>❌ Training conversations</li>
+                <li>❌ Your responses or practice content</li>
+                <li>❌ Voice recordings or transcripts</li>
+                <li>❌ Performance data or feedback</li>
+                <li>❌ Which scenarios you selected</li>
+                <li>❌ Any personal information beyond email</li>
+            </ul>
+            
+            <p style="background: #d4edda; padding: 1rem; border-radius: 8px; color: #155724;">
+                <strong>🛡️ Security:</strong> Your email and password are protected by Firebase's enterprise-grade security. Training sessions exist only in your browser's memory - when you close the page, they're gone forever.
+            </p>
+
+            <h2 id="your-rights">6. Your Rights</h2>
+            <p>You have the right to:</p>
+            <ul>
+                <li>Access your account information (we only have your email address)</li>
+                <li>Correct your email address</li>
+                <li>Delete your account entirely</li>
+                <li>Know what data we have (just your email and authentication info)</li>
+            </ul>
+            <p>To exercise these rights, please contact us at privacy@trainingpro.ai</p>
+            
+            <p><strong>Limitations:</strong> Since we don't store training conversations, we cannot retrieve, modify, or delete past session content. Once a session ends, that data no longer exists in our systems.</p>
+            
+            <p style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+                <strong>Note about third-party services:</strong> If you want to exercise privacy rights regarding data processed by OpenAI or ElevenLabs, you'll need to contact them directly through their privacy policies linked in Section 4.
+            </p>
+
+            <h2>7. Data Retention</h2>
+            <p>Since we prioritize your privacy, here's what we actually retain:</p>
+            <ul>
+                <li><strong>Account information:</strong> Only kept until you delete your account</li>
+                <li><strong>Training conversations:</strong> NEVER stored - deleted instantly when session ends</li>
+                <li><strong>Voice recordings:</strong> NEVER stored - processed and immediately discarded</li>
+                <li><strong>Performance data:</strong> NEVER stored - exists only during your active session</li>
+            </ul>
+            <p>If you delete your account, all your data (just your email and authentication info) is permanently removed from our systems.</p>
+
+            <h2>8. Children's Privacy</h2>
+            <p>Training Pro is not intended for children under 13 years of age. We do not knowingly collect personal information from children under 13.</p>
+
+            <h2>9. Cookies and Local Storage</h2>
+            <p>We use minimal browser storage:</p>
+            <ul>
+                <li><strong>Firebase Authentication:</strong> Uses secure cookies to keep you logged in</li>
+                <li><strong>Session Data:</strong> Temporary browser memory only - cleared when you close the tab</li>
+                <li><strong>No Tracking:</strong> We don't use analytics or advertising cookies</li>
+            </ul>
+
+            <h2>10. Legal Requests and Compliance</h2>
+            <p>If we receive a legal request for user data:</p>
+            <ul>
+                <li>We can only provide what we have: email addresses and account creation dates</li>
+                <li>We cannot provide training conversations because we don't store them</li>
+                <li>However, authorities could potentially request data from OpenAI or ElevenLabs directly</li>
+            </ul>
+            <p>This is another reason we recommend using fictional scenarios for sensitive practice.</p>
+
+            <h2>10. Legal Requests and Compliance</h2>
+            <p>If we receive a legal request for user data:</p>
+            <ul>
+                <li>We can only provide what we have: email addresses and account creation dates</li>
+                <li>We cannot provide training conversations because we don't store them</li>
+                <li>However, authorities could potentially request data from OpenAI or ElevenLabs directly</li>
+            </ul>
+            <p>This is another reason we recommend using fictional scenarios for sensitive practice.</p>
+
+            <h2>11. Changes to This Policy</h2>
+            <p>We may update this privacy policy from time to time. We will notify you of any changes by posting the new policy on this page and updating the "Last updated" date.</p>
+
+            <h2 id="best-practices">12. Best Practices for Sensitive Information</h2>
+            <div style="background: #d1ecf1; padding: 1.5rem; border-radius: 10px; border: 1px solid #bee5eb;">
+                <p><strong>To maximize your privacy when practicing:</strong></p>
+                <ul>
+                    <li>Use fictional names instead of real people</li>
+                    <li>Change company names and specific details</li>
+                    <li>Alter numbers and dates slightly</li>
+                    <li>Focus on the type of situation rather than exact details</li>
+                    <li>Practice the dynamics and responses, not the exact confidential content</li>
+                </ul>
+                <p><strong>Example:</strong> Instead of "preparing for testimony about the XYZ merger," practice "preparing for testimony about a major acquisition." The skills transfer perfectly without the sensitive details.</p>
+                <p style="margin-bottom: 0;"><strong>Bottom line:</strong> Treat Training Pro like any online service - don't share anything you wouldn't want processed by third-party AI services.</p>
+            </div>
+
+            <h2>13. Contact Us</h2>
+            <p>If you have any questions about this privacy policy or our data practices, please contact us at:</p>
+            <ul>
+                
+            </ul>
+
+            <h2 id="faq">14. Frequently Asked Questions</h2>
+            <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 10px; margin-top: 1rem;">
+                <p><strong>Q: Can my employer/others see my training sessions?</strong><br>
+                A: No. Training Pro doesn't store sessions, so we cannot share them with anyone.</p>
+                
+                <p><strong>Q: What happens to sensitive information I discuss during training?</strong><br>
+                A: Training Pro doesn't save it, but it IS sent to OpenAI and ElevenLabs to generate responses. Please review their privacy policies if you're concerned about sensitive data.</p>
+                
+                <p><strong>Q: Do you use my conversations to train AI models?</strong><br>
+                A: Training Pro doesn't use your data for anything. OpenAI states they don't use API data for training, but check their current policies.</p>
+                
+                <p><strong>Q: What if I accidentally share confidential information?</strong><br>
+                A: It won't be stored by Training Pro, but it will have been processed by OpenAI/ElevenLabs. For highly confidential info, consider using fictional scenarios instead.</p>
+                
+                <p><strong>Q: Can I use this for classified or legally privileged information?</strong><br>
+                A: No. While we don't store data, it still passes through third-party services. Never use Training Pro for classified, legally privileged, or highly confidential information.</p>
+                
+                <p style="margin-bottom: 0;"><strong>Q: How can I practice safely with sensitive topics?</strong><br>
+                A: Use fictional names, companies, and slightly altered scenarios. This lets you practice effectively while protecting real sensitive information.</p>
+            </div>
+            
+            <div style="background: #e8f5e9; padding: 1.5rem; border-radius: 10px; margin-top: 2rem; border: 2px solid #4caf50; text-align: center;">
+                <p style="font-size: 1.1rem; font-weight: 600; color: #2e7d32; margin: 0;">
+                    💡 Remember: Great practice doesn't require real confidential data.<br>
+                    Use fictional scenarios to train effectively while protecting sensitive information.
+                </p>
+            </div>
+
+            <a href="index.html" class="back-button">Back to Training Pro</a>
+        </div>
+    </div>
+</body>
+</html>
