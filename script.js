@@ -2,7 +2,7 @@
 let currentUser = null;
 let sessionRating = 0;
 
-// Global state variables (your existing code)
+// Global state variables
 let currentPage = 1;
 let selectedScenario = '';
 let selectedPersona = '';
@@ -20,6 +20,9 @@ let topLinesTracking = {};
 // NEW: Conversation memory
 let conversationHistory = [];
 let isRecording = false;
+
+// CRITICAL FIX: Add processing lock to prevent multiple messages
+let isProcessingMessage = false;
 
 // Voice recognition variables
 let recognition = null;
@@ -67,6 +70,7 @@ function resetApplicationState() {
     traitValues = {};
     conversationHistory = [];
     isRecording = false;
+    isProcessingMessage = false; // Reset processing lock
     useElevenLabs = true; // Reset voice preference
     topLines = []; // Reset top lines
     topLinesTracking = {}; // Reset tracking
@@ -293,6 +297,9 @@ function endTraining() {
             isRecording = false;
         }
         
+        // Reset processing lock
+        isProcessingMessage = false;
+        
         // Collect top lines for analysis
         collectTopLines();
         
@@ -322,6 +329,7 @@ function resetForNewSession() {
     sessionRating = 0;
     topLines = [];
     topLinesTracking = {};
+    isProcessingMessage = false; // Reset processing lock
     
     // Reset voice settings
     useElevenLabs = true;
@@ -332,7 +340,6 @@ function resetForNewSession() {
     }
     
     // Reset UI elements
-    // REMOVED: document.body.className = '';
     document.querySelectorAll('.scenario-card').forEach(card => {
         card.classList.remove('active');
     });
@@ -574,94 +581,40 @@ const personas = {
     ]
 };
 
-// UPDATED System prompts with more realistic question lengths
+// UPDATED System prompts with STRONGER single message enforcement
 const systemPrompts = {
-    // COMMITTEE PERSONAS - Often ask longer, multi-part questions
-    'committee-forensic-chair': 'Channel the select committee chair style of figures like Yvette Cooper or Hilary Benn - methodical, evidence-based questioning that builds cases systematically. Reference previous witness testimony, maintain formal parliamentary courtesy but be relentless in pursuing facts. Use the questioning approach seen in Hansard transcripts - start with context-setting, then drill down systematically. Remember everything they\'ve said and build your case witness by witness. Keep responses focused but allow for proper context-setting - typically 1-3 sentences for most questions, occasionally longer for complex procedural matters.',
+    // COMMITTEE PERSONAS - Keys must match exactly with persona IDs
+    'committee-forensic-chair': 'Channel the select committee chair style of figures like Yvette Cooper or Hilary Benn - methodical, evidence-based questioning that builds cases systematically. Reference previous witness testimony, maintain formal parliamentary courtesy but be relentless in pursuing facts. Use the questioning approach seen in Hansard transcripts - start with context-setting, then drill down systematically. Remember everything they\'ve said and build your case witness by witness. CRITICAL: Keep responses to 1-4 sentences maximum in ONE SINGLE MESSAGE. NEVER send two messages. ALWAYS complete your thought fully. NEVER leave a sentence unfinished.',
     
-    'committee-backbench-terrier': 'Embody the style of persistent backbench MPs like those who made their reputation holding power to account in select committees. You have no ministerial ambitions - just a burning need for truth. Apply the approach seen in parliamentary questioning where MPs circle back to unanswered questions multiple ways until getting real answers. You\'re not impressed by titles or evasions - you represent ordinary constituents who deserve straight answers. Keep questions punchy and direct - usually 1-2 sentences, but can build up with follow-ups.',
+    'committee-backbench-terrier': 'Embody the style of persistent backbench MPs like those who made their reputation holding power to account in select committees. You have no ministerial ambitions - just a burning need for truth. Apply the approach seen in parliamentary questioning where MPs circle back to unanswered questions multiple ways until getting real answers. You\'re not impressed by titles or evasions - you represent ordinary constituents who deserve straight answers. CRITICAL: Keep responses to 1-4 sentences maximum in ONE SINGLE MESSAGE. NEVER send two messages. ALWAYS complete your thought fully. NEVER leave a sentence unfinished.',
     
-    'committee-technical-specialist': 'Channel the approach of subject-matter expert MPs who sit on specialist committees - those with genuine expertise in policy areas. You know the legislation inside out, previous consultations, international comparisons. Use the technically precise questioning style seen in select committee transcripts that reveals whether witnesses really understand their brief. Catch when they misstate facts or dodge technical realities. Questions can be longer when establishing technical context (2-3 sentences), but keep follow-ups sharp.',
+    'committee-technical-specialist': 'Channel the approach of subject-matter expert MPs who sit on specialist committees - those with genuine expertise in policy areas. You know the legislation inside out, previous consultations, international comparisons. Use the technically precise questioning style seen in select committee transcripts that reveals whether witnesses really understand their brief. Catch when they misstate facts or dodge technical realities. CRITICAL: Keep responses to 1-4 sentences maximum in ONE SINGLE MESSAGE. NEVER send two messages. ALWAYS complete your thought fully. NEVER leave a sentence unfinished.',
 
-    // MEDIA PERSONAS - Varied lengths based on style
-    'media-political-heavyweight': 'Channel the interviewing style of Jeremy Paxman and Andrew Neil - veteran political interviewers known for forensic preparation and refusing to accept evasive answers. You\'ve done your homework like they do - you know voting records, previous statements, contradictions. Apply their approach of circling back to unanswered questions and not being deflected by political spin. You represent viewers who want straight answers, using their confrontational but professional style. Mix sharp single questions with occasional longer setups when presenting evidence.',
+    // MEDIA PERSONAS  
+    'media-political-heavyweight': 'Channel the interviewing style of Jeremy Paxman and Andrew Neil - veteran political interviewers known for forensic preparation and refusing to accept evasive answers. You\'ve done your homework like they do - you know voting records, previous statements, contradictions. Apply their approach of circling back to unanswered questions and not being deflected by political spin. You represent viewers who want straight answers, using their confrontational but professional style. CRITICAL: Keep responses to 1-4 sentences maximum in ONE SINGLE MESSAGE. NEVER send two messages. ALWAYS complete your thought fully. NEVER leave a sentence unfinished.',
     
-    'media-time-pressure-broadcaster': 'Use the radio interviewing style of John Humphrys and Nick Robinson on Radio 4 Today programme - fast-paced with tight time constraints and broad audience appeal. Apply their technique of cutting through jargon, pressing for simple explanations, and moving quickly between topics. Channel their approach of making complex issues accessible to ordinary listeners with time pressure and urgency. Keep questions short and punchy - mostly single sentences, maximum 2.',
+    'media-time-pressure-broadcaster': 'Use the radio interviewing style of John Humphrys and Nick Robinson on Radio 4 Today programme - fast-paced with tight time constraints and broad audience appeal. Apply their technique of cutting through jargon, pressing for simple explanations, and moving quickly between topics. Channel their approach of making complex issues accessible to ordinary listeners with time pressure and urgency. CRITICAL: Keep responses to 1-4 sentences maximum in ONE SINGLE MESSAGE. NEVER send two messages. ALWAYS complete your thought fully. NEVER leave a sentence unfinished.',
     
-    'media-investigative-journalist': 'Channel the investigative approach of journalists like those who spend weeks researching stories for programmes like Panorama or Dispatches. You have documents, sources, timeline contradictions. Build questioning like they do - each question serves a larger narrative you\'re constructing. Be patient but implacable like investigative journalists, following every thread methodically. Can use longer questions when presenting evidence or context (2-3 sentences), but keep probing questions sharp.',
+    'media-investigative-journalist': 'Channel the investigative approach of journalists like those who spend weeks researching stories for programmes like Panorama or Dispatches. You have documents, sources, timeline contradictions. Build questioning like they do - each question serves a larger narrative you\'re constructing. Be patient but implacable like investigative journalists, following every thread methodically. CRITICAL: Keep responses to 1-4 sentences maximum in ONE SINGLE MESSAGE. NEVER send two messages. ALWAYS complete your thought fully. NEVER leave a sentence unfinished.',
     
-    'media-sympathetic-professional': 'Use the interviewing approach of Emily Maitlis or Martha Kearney - respected broadcasters known for fair but thorough interviews. Give people space to explain complex issues like they do, while still asking tough questions when needed. Channel their style of being genuinely interested in understanding perspectives while maintaining journalistic integrity and public interest. Vary between conversational single questions and more detailed follow-ups.',
+    'media-sympathetic-professional': 'Use the interviewing approach of Emily Maitlis or Martha Kearney - respected broadcasters known for fair but thorough interviews. Give people space to explain complex issues like they do, while still asking tough questions when needed. Channel their style of being genuinely interested in understanding perspectives while maintaining journalistic integrity and public interest. CRITICAL: Keep responses to 1-4 sentences maximum in ONE SINGLE MESSAGE. NEVER send two messages. ALWAYS complete your thought fully. NEVER leave a sentence unfinished.',
 
-    // CONSULTATION PERSONAS - More conversational, varied lengths
-    'consultation-concerned-local': 'You are a local resident whose life will be directly affected by this decision. You\'re not a policy expert - you\'re a real person with real concerns about your community, your family, your daily life. Ask emotional, practical questions about what this actually means for ordinary people like you. Stay grounded in personal impact, not policy theory. Remember their previous answers and hold them to commitments. Mix short emotional reactions with longer personal context when sharing concerns.',
+    // CONSULTATION PERSONAS
+    'consultation-concerned-local': 'You are a local resident whose life will be directly affected by this decision. You\'re not a policy expert - you\'re a real person with real concerns about your community, your family, your daily life. Ask emotional, practical questions about what this actually means for ordinary people like you. Stay grounded in personal impact, not policy theory. Remember their previous answers and hold them to commitments. CRITICAL: Keep responses to 1-4 sentences maximum in ONE SINGLE MESSAGE. NEVER send two messages. ALWAYS complete your thought fully. NEVER leave a sentence unfinished.',
     
-    'consultation-business-voice': 'You are a local business owner trying to understand what this policy means for your livelihood. Think in practical terms - costs, compliance, timelines, paperwork. You\'re not hostile to progress but need to understand real-world implementation and economic impacts on small businesses like yours. Reference their previous statements about costs and timelines. Questions can be longer when explaining business context, shorter when seeking specific clarifications.',
+    'consultation-business-voice': 'You are a local business owner trying to understand what this policy means for your livelihood. Think in practical terms - costs, compliance, timelines, paperwork. You\'re not hostile to progress but need to understand real-world implementation and economic impacts on small businesses like yours. Reference their previous statements about costs and timelines. CRITICAL: Keep responses to 1-4 sentences maximum in ONE SINGLE MESSAGE. NEVER send two messages. ALWAYS complete your thought fully. NEVER leave a sentence unfinished.',
     
-    'consultation-informed-activist': 'You are a community activist who\'s done homework on this issue. You understand policy detail but approach from values-based perspective - social justice, environmental impact, community equity. Challenge officials to consider broader implications beyond their narrow brief, drawing on activist questioning techniques. Remember their commitments and challenge inconsistencies. Mix passionate shorter challenges with longer questions that present research or community evidence.',
+    'consultation-informed-activist': 'You are a community activist who\'s done homework on this issue. You understand policy detail but approach from values-based perspective - social justice, environmental impact, community equity. Challenge officials to consider broader implications beyond their narrow brief, drawing on activist questioning techniques. Remember their commitments and challenge inconsistencies. CRITICAL: Keep responses to 1-4 sentences maximum in ONE SINGLE MESSAGE. NEVER send two messages. ALWAYS complete your thought fully. NEVER leave a sentence unfinished.',
 
-    // INTERVIEW PERSONAS - Professional variation
-    'interview-senior-stakeholder': 'You are a senior executive evaluating whether this person can operate at the level required. Ask about strategic thinking, leadership examples, how they handle pressure and ambiguity. Assess cultural fit and whether they can represent the organization externally. Use executive-level questioning approach. Build on their previous answers to assess consistency. Vary between brief direct questions and longer scenario-based challenges.',
+    // INTERVIEW PERSONAS
+    'interview-senior-stakeholder': 'You are a senior executive evaluating whether this person can operate at the level required. Ask about strategic thinking, leadership examples, how they handle pressure and ambiguity. Assess cultural fit and whether they can represent the organization externally. Use executive-level questioning approach. Build on their previous answers to assess consistency. CRITICAL: Keep responses to 1-4 sentences maximum in ONE SINGLE MESSAGE. NEVER send two messages. ALWAYS complete your thought fully. NEVER leave a sentence unfinished.',
     
-    'interview-technical-evaluator': 'You are a technical expert evaluating actual competency, not just resume claims. Ask specific technical questions, present scenarios, test problem-solving in real-time. Distinguish between theoretical knowledge and practical experience through hands-on technical assessment. Reference their previous technical claims and build complexity. Technical questions can be longer when setting up problems, follow-ups are typically shorter.',
+    'interview-technical-evaluator': 'You are a technical expert evaluating actual competency, not just resume claims. Ask specific technical questions, present scenarios, test problem-solving in real-time. Distinguish between theoretical knowledge and practical experience through hands-on technical assessment. Reference their previous technical claims and build complexity. CRITICAL: Keep responses to 1-4 sentences maximum in ONE SINGLE MESSAGE. NEVER send two messages. ALWAYS complete your thought fully. NEVER leave a sentence unfinished.',
     
-    'interview-panel-perspective': 'Represent multiple perspectives in this interview - sometimes technical, sometimes managerial, sometimes cultural fit. Shift between different types of questions as if different panel members are speaking. Evaluate comprehensively across all dimensions using varied panel interview techniques. Remember all their answers from different angles. Natural variation in question length as different "panel members" have different styles.',
+    'interview-panel-perspective': 'Represent multiple perspectives in this interview - sometimes technical, sometimes managerial, sometimes cultural fit. Shift between different types of questions as if different panel members are speaking. Evaluate comprehensively across all dimensions using varied panel interview techniques. Remember all their answers from different angles. CRITICAL: Keep responses to 1-4 sentences maximum in ONE SINGLE MESSAGE. NEVER send two messages. ALWAYS complete your thought fully. NEVER leave a sentence unfinished.',
     
-    'interview-supportive-developer': 'Focus on potential and growth mindset over perfect answers. Ask about learning experiences, how they handle failure, what they want to develop. Probe for curiosity, adaptability, and genuine enthusiasm for growth using supportive but thorough questioning techniques. Build on their examples positively while still challenging them. Mix encouraging shorter questions with more detailed exploratory ones.'
+    'interview-supportive-developer': 'Focus on potential and growth mindset over perfect answers. Ask about learning experiences, how they handle failure, what they want to develop. Probe for curiosity, adaptability, and genuine enthusiasm for growth using supportive but thorough questioning techniques. Build on their examples positively while still challenging them. CRITICAL: Keep responses to 1-4 sentences maximum in ONE SINGLE MESSAGE. NEVER send two messages. ALWAYS complete your thought fully. NEVER leave a sentence unfinished.'
 };
-
-// NEW: Function to ensure we only get one question/statement
-function ensureSingleQuestion(response) {
-    // Remove any accidental line breaks first
-    let cleaned = response.replace(/\n+/g, ' ').trim();
-    
-    // Check for multiple questions (? marks)
-    const questionParts = cleaned.split('?').filter(part => part.trim().length > 10);
-    
-    if (questionParts.length > 1) {
-        // Multiple questions detected - take only the first
-        console.warn('Multiple questions detected, taking first one');
-        return questionParts[0].trim() + '?';
-    }
-    
-    // Check for multiple statements (. marks) if it's not a question
-    if (!cleaned.includes('?')) {
-        const statementParts = cleaned.split(/\.\s+/).filter(part => part.trim().length > 10);
-        
-        if (statementParts.length > 1) {
-            // Multiple statements - take the most substantial one
-            console.warn('Multiple statements detected, taking first substantial one');
-            return statementParts[0].trim() + '.';
-        }
-    }
-    
-    return cleaned;
-}
-
-// UPDATED cleanInterviewerResponse to be more aggressive about ensuring single response
-function cleanInterviewerResponse(response) {
-    console.log('🧹 Cleaning response:', response);
-    
-    // Remove any line breaks
-    let cleaned = response.replace(/\n+/g, ' ').trim();
-    
-    // Remove any markdown
-    cleaned = cleaned.replace(/\*\*/g, '').replace(/\*/g, '');
-    cleaned = cleaned.replace(/#+\s/g, ''); // Remove headers
-    cleaned = cleaned.replace(/^\d+\.\s/gm, ''); // Remove numbered lists
-    cleaned = cleaned.replace(/^-\s/gm, ''); // Remove bullet points
-    
-    // Ensure proper spacing
-    cleaned = cleaned.replace(/\s+/g, ' ');
-    
-    // Fix punctuation issues
-    cleaned = cleaned.replace(/\.\s*\./g, '.').replace(/\?\s*\?/g, '?');
-    
-    // Final safety check using ensureSingleQuestion
-    cleaned = ensureSingleQuestion(cleaned);
-    
-    console.log('✅ Final cleaned response:', cleaned);
-    return cleaned;
-}
 
 // Cookie notice functionality
 function checkCookieNotice() {
@@ -829,9 +782,6 @@ function selectScenario(scenario) {
         card.classList.remove('active');
     });
     document.querySelector(`[data-scenario="${scenario}"]`).classList.add('active');
-    
-    // REMOVED: Theme switching
-    // document.body.className = `${scenario}-theme`;
     
     // Enable next button
     const nextBtn = document.getElementById('next-to-page-2');
@@ -1147,10 +1097,12 @@ function startTraining() {
     beginTrainingSession();
 }
 
-// UPDATED beginTrainingSession with natural opening greetings
 function beginTrainingSession() {
     // Reset conversation history for new session
     conversationHistory = [];
+    
+    // Reset processing lock
+    isProcessingMessage = false;
     
     // Reset ElevenLabs flag for new session
     useElevenLabs = true;
@@ -1186,60 +1138,15 @@ function beginTrainingSession() {
         personaDescription.textContent = `Interviewer: ${personaData?.name || 'Unknown'}`;
     }
     
-    // Generate natural opening greeting based on scenario
-    let openingGreeting = '';
-    const roleTitle = userRole || 'our guest';
-    const orgName = companyContext ? ` from ${companyContext}` : '';
-    
-    switch(selectedScenario) {
-        case 'committee':
-            openingGreeting = `Good morning and thank you for appearing before the committee today. We're here to take evidence on ${scenarioDescription || 'this important matter'}. For the record, could you please state your name and position?`;
-            break;
-            
-        case 'media':
-            if (selectedPersona === 'time-pressure-broadcaster') {
-                openingGreeting = `We're joined now by ${roleTitle}${orgName}. We've got just a few minutes, so let's get straight to it - ${scenarioDescription ? `about ${scenarioDescription}, ` : ''}can you explain your position?`;
-            } else if (selectedPersona === 'sympathetic-professional') {
-                openingGreeting = `Welcome to the programme. I'm joined by ${roleTitle}${orgName}. Thank you for being with us today. ${scenarioDescription ? `Let's talk about ${scenarioDescription}. ` : ''}Can you start by telling us how this affects people?`;
-            } else {
-                openingGreeting = `Welcome to the programme. I'm joined by ${roleTitle}${orgName}. ${scenarioDescription ? `We're discussing ${scenarioDescription}. ` : ''}Let me start with the obvious question - what's your response to the recent criticism?`;
-            }
-            break;
-            
-        case 'consultation':
-            openingGreeting = `Hello, thank you for coming to speak with us today. I'm here representing ${selectedPersona === 'business-voice' ? 'local businesses' : selectedPersona === 'informed-activist' ? 'community groups' : 'local residents'} who are concerned about ${scenarioDescription || 'these proposals'}. Can you help us understand what this means for our community?`;
-            break;
-            
-        case 'interview':
-            if (selectedPersona === 'supportive-developer') {
-                openingGreeting = `Welcome! Thanks so much for taking the time to speak with us today. We're really excited to learn more about you. Why don't you start by telling me what attracted you to this opportunity?`;
-            } else if (selectedPersona === 'senior-stakeholder') {
-                openingGreeting = `Good to meet you. I've reviewed your background - impressive experience at ${companyContext || 'your current organization'}. Let's dive right in - what's your vision for this role?`;
-            } else {
-                openingGreeting = `Thanks for coming in today. We're looking for someone who can really make an impact in this position. Tell me about your most significant achievement in your current role.`;
-            }
-            break;
-            
-        default:
-            openingGreeting = `Welcome to your training session. I'll be playing the role of ${personaData?.name || 'your interviewer'}. Are you ready to begin?`;
-    }
-    
-    // Set the opening message
+    // Clear previous messages
     const messagesContainer = document.getElementById('chat-messages');
     if (messagesContainer) {
         messagesContainer.innerHTML = `
             <div class="message interviewer">
-                <strong>Interviewer:</strong> ${openingGreeting}
+                <strong>Interviewer:</strong> Welcome to your training session. I'll be playing the role of ${personaData?.name || 'your interviewer'}. Are you ready to begin?
             </div>
         `;
     }
-    
-    // Add opening to conversation history
-    conversationHistory.push({
-        role: 'interviewer',
-        content: openingGreeting,
-        timestamp: new Date().toISOString()
-    });
     
     updateVoiceStatus('ready', 'Ready for voice input');
 }
@@ -1250,56 +1157,56 @@ function handleKeyPress(event) {
     }
 }
 
-// UPDATED sendMessage to add debugging and ensure single message
+// UPDATED sendMessage with processing lock
 async function sendMessage() {
+    // Check if already processing
+    if (isProcessingMessage) {
+        console.log('Already processing a message, ignoring...');
+        return;
+    }
+    
     const input = document.getElementById('user-input');
     if (!input) return;
     
     const message = input.value.trim();
     if (!message) return;
     
-    console.log('📤 Sending user message:', message);
+    // Set the processing lock
+    isProcessingMessage = true;
     
-    // Add user message to conversation history
-    conversationHistory.push({
-        role: 'user',
-        content: message,
-        timestamp: new Date().toISOString()
-    });
-    
-    addMessage(message, 'user');
-    input.value = '';
-    
-    // Show typing indicator
-    const typingDiv = document.createElement('div');
-    typingDiv.className = 'message interviewer';
-    typingDiv.innerHTML = '<strong>Interviewer:</strong> <em>typing...</em>';
-    typingDiv.id = 'typing-indicator';
-    
-    const messagesContainer = document.getElementById('chat-messages');
-    if (messagesContainer) {
-        messagesContainer.appendChild(typingDiv);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
+    // Disable UI controls
+    const sendButton = document.querySelector('.chat-input button');
+    const voiceButton = document.getElementById('voice-toggle');
+    if (sendButton) sendButton.disabled = true;
+    if (voiceButton) voiceButton.disabled = true;
     
     try {
-        // Get AI response
-        const rawResponse = await getAIResponse(message);
-        console.log('📥 Got AI response:', rawResponse);
+        // Add user message to conversation history
+        conversationHistory.push({
+            role: 'user',
+            content: message,
+            timestamp: new Date().toISOString()
+        });
         
-        // Clean the response
-        const response = cleanInterviewerResponse(rawResponse);
-        console.log('🧹 Cleaned response:', response);
+        addMessage(message, 'user');
+        input.value = '';
         
-        // Remove typing indicator
+        // Show typing indicator
+        const typingDiv = document.createElement('div');
+        typingDiv.className = 'message interviewer';
+        typingDiv.innerHTML = '<strong>Interviewer:</strong> <em>typing...</em>';
+        typingDiv.id = 'typing-indicator';
+        
+        const messagesContainer = document.getElementById('chat-messages');
+        if (messagesContainer) {
+            messagesContainer.appendChild(typingDiv);
+        }
+        
+        const response = await getAIResponse(message);
         const typingElement = document.getElementById('typing-indicator');
         if (typingElement) {
             typingElement.remove();
         }
-        
-        // Check current message count before adding
-        const messageCountBefore = messagesContainer.querySelectorAll('.message').length;
-        console.log('📊 Messages before adding:', messageCountBefore);
         
         // Add AI response to conversation history
         conversationHistory.push({
@@ -1308,16 +1215,10 @@ async function sendMessage() {
             timestamp: new Date().toISOString()
         });
         
-        // Add message ONCE
         addMessage(response, 'interviewer');
         
-        // Check message count after adding
-        const messageCountAfter = messagesContainer.querySelectorAll('.message').length;
-        console.log('📊 Messages after adding:', messageCountAfter);
-        console.log('📊 Added messages:', messageCountAfter - messageCountBefore);
-        
-        // Speak the response
-        console.log('🔊 Speaking response:', response.substring(0, 50) + '...');
+        // Convert response to speech using your secure API
+        console.log('🔊 Attempting to speak response:', response.substring(0, 50) + '...');
         await speakResponse(response);
         
         updateVoiceStatus('ready', 'Ready for voice input');
@@ -1330,41 +1231,54 @@ async function sendMessage() {
         addMessage('Sorry, there was an error. Please check your connection and try again.', 'interviewer');
         console.error('Error in sendMessage:', error);
         updateVoiceStatus('error', 'Error occurred');
+    } finally {
+        // Always release the lock and re-enable UI
+        isProcessingMessage = false;
+        if (sendButton) sendButton.disabled = false;
+        if (voiceButton) voiceButton.disabled = false;
     }
 }
 
-// UPDATED addMessage function to ensure single blocks
 function addMessage(message, sender) {
     const messagesContainer = document.getElementById('chat-messages');
     if (!messagesContainer) return;
-    
-    // Clean the message one more time to be safe
-    const cleanedMessage = message.replace(/\n+/g, ' ').trim();
     
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${sender}`;
     
     if (sender === 'interviewer') {
-        messageDiv.innerHTML = `<strong>Interviewer:</strong> ${cleanedMessage}`;
+        messageDiv.innerHTML = `<strong>Interviewer:</strong> ${message}`;
     } else {
-        messageDiv.innerHTML = `<strong>You:</strong> ${cleanedMessage}`;
+        messageDiv.innerHTML = `<strong>You:</strong> ${message}`;
     }
     
     messagesContainer.appendChild(messageDiv);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// UPDATED getAIResponse - Remove key messages context and add strict single-response instruction
+// UPDATED AI Response function with stronger single message enforcement
 async function getAIResponse(userMessage) {
+    // Fixed persona mapping with debugging
     const personaKey = `${selectedScenario}-${selectedPersona}`;
     
-    console.log('🔍 Getting response for:', personaKey);
+    // Debug: Show what we're looking for
+    console.log('🔍 Debug Info:');
+    console.log('Selected Scenario:', selectedScenario);
+    console.log('Selected Persona:', selectedPersona);
+    console.log('Looking for key:', personaKey);
     
+    // Get the system prompt with better fallback
     let systemPrompt = systemPrompts[personaKey];
     
     if (!systemPrompt) {
         console.warn('❌ No prompt found for:', personaKey);
-        systemPrompt = 'You are a professional interviewer conducting a training session. Ask relevant questions that feel natural and realistic. Vary your question length based on context - some questions are short and direct, others need more setup. Remember their previous answers and build on them.';
+        console.log('Available keys:', Object.keys(systemPrompts));
+        
+        // Fallback to a basic prompt
+        systemPrompt = 'You are a professional interviewer conducting a training session. Ask relevant questions about the scenario and remember their previous answers. CRITICAL: Keep responses to 1-4 sentences maximum in ONE SINGLE MESSAGE. NEVER send two messages. ALWAYS complete your thought fully. NEVER leave a sentence unfinished.';
+        console.log('✅ Using fallback prompt');
+    } else {
+        console.log('✅ Found matching prompt');
     }
     
     // Build conversation memory context
@@ -1381,7 +1295,10 @@ async function getAIResponse(userMessage) {
         conversationContext += '\nREMEMBER: Reference their previous answers. Point out contradictions. Build on what they\'ve said. Be reactive, not generic.\n';
     }
     
-    // Add scenario context (WITHOUT key messages)
+    // Add trait customization
+    let traitInstructions = '\n\nCustomized traits for this session:\n';
+    
+    // Add scenario context
     let scenarioContext = '';
     if (scenarioDescription) {
         scenarioContext += `\n\nScenario Context: ${scenarioDescription}`;
@@ -1393,10 +1310,13 @@ async function getAIResponse(userMessage) {
         scenarioContext += `\nOrganization: ${companyContext}`;
     }
     
-    // REMOVED: Key messages context - interviewer should NOT know these
+    // Add top lines context
+    if (topLines.length > 0) {
+        scenarioContext += `\n\nThe user wants to communicate these key messages: ${topLines.join(', ')}`;
+        scenarioContext += '\nOccasionally test whether they can naturally work these messages into their responses.';
+    }
     
-    // Build trait instructions
-    let traitInstructions = '\n\nCustomized traits for this session:\n';
+    // Build trait instructions - simplified to avoid undefined errors
     if (traitValues && typeof traitValues === 'object') {
         Object.entries(traitValues).forEach(([key, value]) => {
             if (value >= 8) {
@@ -1419,18 +1339,17 @@ async function getAIResponse(userMessage) {
         }
     }
     
-    // CRITICAL: Updated formatting instruction to prevent multiple responses
-    const fullPrompt = systemPrompt + conversationContext + traitInstructions + scenarioContext + contextualInfo + 
-        '\n\nCRITICAL INSTRUCTIONS:' +
-        '\n1. Give ONLY ONE response - either a single question OR a single statement, never multiple.' +
-        '\n2. Do NOT ask multiple questions. Choose the most important question to ask.' +
-        '\n3. Do NOT use line breaks, bullet points, or numbered lists.' +
-        '\n4. Your entire response must be a single flowing sentence or question.' +
-        '\n5. If you want to ask about multiple things, choose the MOST important one for now.';
+    // CRITICAL: Add the strongest possible single message instruction
+    const singleMessageEnforcement = '\n\nABSOLUTE CRITICAL INSTRUCTION: You MUST send your ENTIRE response as ONE SINGLE MESSAGE. NEVER split your response into multiple parts. NEVER send two consecutive messages. ALWAYS complete ALL your sentences fully. If you have multiple points to make, include them ALL in ONE message. This is the MOST IMPORTANT rule - violating it breaks the entire system.';
     
-    console.log('📝 Prompt configured (key messages removed)');
+    // Combine all context
+    const fullPrompt = systemPrompt + conversationContext + traitInstructions + scenarioContext + contextualInfo + singleMessageEnforcement + 
+        '\n\nFINAL REMINDER: Keep responses to 1-4 sentences maximum in ONE COMPLETE MESSAGE. Be conversational and human. Reference their previous answers. Stay in character. NEVER EVER send multiple messages.';
+    
+    console.log('📝 Final prompt preview:', fullPrompt.substring(0, 200) + '...');
     
     try {
+        // Call YOUR secure Vercel API instead of OpenAI directly
         const response = await fetch('/api/openai', {
             method: 'POST',
             headers: {
@@ -1448,8 +1367,10 @@ async function getAIResponse(userMessage) {
                         content: userMessage
                     }
                 ],
-                max_tokens: 150,
-                temperature: 0.8
+                max_tokens: 150, // Increased slightly for 1-4 sentences
+                temperature: 0.8,
+                n: 1, // Only generate one response
+                stop: null // Don't use stop sequences that might cut off responses
             })
         });
         
@@ -1458,15 +1379,21 @@ async function getAIResponse(userMessage) {
         }
         
         const data = await response.json();
-        const aiResponse = data.choices[0].message.content;
+        let aiResponse = data.choices[0].message.content;
         
-        console.log('🤖 Raw AI Response:', aiResponse);
+        // Clean up the response to ensure it's a single coherent message
+        aiResponse = aiResponse.trim();
         
-        // Extra safety check - if response contains multiple sentences with questions, take first
-        const safeResponse = ensureSingleQuestion(aiResponse);
-        console.log('🔒 Safe response:', safeResponse);
+        // Remove any accidental double newlines that might cause splitting
+        aiResponse = aiResponse.replace(/\n\n+/g, ' ');
         
-        return safeResponse;
+        // Ensure it ends with proper punctuation
+        if (aiResponse && !aiResponse.match(/[.!?]$/)) {
+            aiResponse += '.';
+        }
+        
+        console.log('🤖 AI Response:', aiResponse);
+        return aiResponse;
         
     } catch (error) {
         console.error('💥 Error in getAIResponse:', error);
@@ -1637,25 +1564,6 @@ function speakWithBrowserTTS(text) {
     }
 }
 
-// DIAGNOSTIC: Add this function to check for duplicate message issues
-function checkForDuplicateMessages() {
-    const messages = document.querySelectorAll('.message.interviewer');
-    const contents = new Set();
-    let duplicates = 0;
-    
-    messages.forEach((msg, index) => {
-        const content = msg.textContent;
-        if (contents.has(content)) {
-            console.warn(`Duplicate message found at index ${index}:`, content);
-            duplicates++;
-        }
-        contents.add(content);
-    });
-    
-    console.log(`Total interviewer messages: ${messages.length}, Duplicates: ${duplicates}`);
-    return duplicates;
-}
-
 // Test function to verify persona mapping
 function testPersonaMapping() {
     console.log('🧪 Testing Persona Mapping...');
@@ -1755,7 +1663,6 @@ window.addTopLine = addTopLine;
 window.removeTopLine = removeTopLine;
 window.resetForNewSession = resetForNewSession;
 window.signOut = signOut;
-window.checkForDuplicateMessages = checkForDuplicateMessages;
 
 // Navigation handler
 window.handleNavClick = function(section) {
