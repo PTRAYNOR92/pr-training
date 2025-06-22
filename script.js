@@ -609,26 +609,57 @@ const systemPrompts = {
     'interview-supportive-developer': 'Focus on potential and growth mindset over perfect answers. Ask about learning experiences, how they handle failure, what they want to develop. Probe for curiosity, adaptability, and genuine enthusiasm for growth using supportive but thorough questioning techniques. Build on their examples positively while still challenging them. Mix encouraging shorter questions with more detailed exploratory ones.'
 };
 
-// Function to clean responses and ensure single message blocks
-function cleanInterviewerResponse(response) {
-    // Remove any line breaks that might cause double boxes
-    let cleaned = response.replace(/\n\n+/g, ' ').replace(/\n/g, ' ').trim();
+// NEW: Function to ensure we only get one question/statement
+function ensureSingleQuestion(response) {
+    // Remove any accidental line breaks first
+    let cleaned = response.replace(/\n+/g, ' ').trim();
     
-    // Remove any markdown or formatting that could cause issues
+    // Check for multiple questions (? marks)
+    const questionParts = cleaned.split('?').filter(part => part.trim().length > 10);
+    
+    if (questionParts.length > 1) {
+        // Multiple questions detected - take only the first
+        console.warn('Multiple questions detected, taking first one');
+        return questionParts[0].trim() + '?';
+    }
+    
+    // Check for multiple statements (. marks) if it's not a question
+    if (!cleaned.includes('?')) {
+        const statementParts = cleaned.split(/\.\s+/).filter(part => part.trim().length > 10);
+        
+        if (statementParts.length > 1) {
+            // Multiple statements - take the most substantial one
+            console.warn('Multiple statements detected, taking first substantial one');
+            return statementParts[0].trim() + '.';
+        }
+    }
+    
+    return cleaned;
+}
+
+// UPDATED cleanInterviewerResponse to be more aggressive about ensuring single response
+function cleanInterviewerResponse(response) {
+    console.log('🧹 Cleaning response:', response);
+    
+    // Remove any line breaks
+    let cleaned = response.replace(/\n+/g, ' ').trim();
+    
+    // Remove any markdown
     cleaned = cleaned.replace(/\*\*/g, '').replace(/\*/g, '');
+    cleaned = cleaned.replace(/#+\s/g, ''); // Remove headers
+    cleaned = cleaned.replace(/^\d+\.\s/gm, ''); // Remove numbered lists
+    cleaned = cleaned.replace(/^-\s/gm, ''); // Remove bullet points
     
     // Ensure proper spacing
     cleaned = cleaned.replace(/\s+/g, ' ');
     
-    // Fix common punctuation issues that might cause splitting
+    // Fix punctuation issues
     cleaned = cleaned.replace(/\.\s*\./g, '.').replace(/\?\s*\?/g, '?');
     
-    // Log if we made significant changes
-    if (response !== cleaned) {
-        console.log('Cleaned response from:', response);
-        console.log('To:', cleaned);
-    }
+    // Final safety check using ensureSingleQuestion
+    cleaned = ensureSingleQuestion(cleaned);
     
+    console.log('✅ Final cleaned response:', cleaned);
     return cleaned;
 }
 
@@ -1116,6 +1147,7 @@ function startTraining() {
     beginTrainingSession();
 }
 
+// UPDATED beginTrainingSession with natural opening greetings
 function beginTrainingSession() {
     // Reset conversation history for new session
     conversationHistory = [];
@@ -1154,15 +1186,60 @@ function beginTrainingSession() {
         personaDescription.textContent = `Interviewer: ${personaData?.name || 'Unknown'}`;
     }
     
-    // Clear previous messages
+    // Generate natural opening greeting based on scenario
+    let openingGreeting = '';
+    const roleTitle = userRole || 'our guest';
+    const orgName = companyContext ? ` from ${companyContext}` : '';
+    
+    switch(selectedScenario) {
+        case 'committee':
+            openingGreeting = `Good morning and thank you for appearing before the committee today. We're here to take evidence on ${scenarioDescription || 'this important matter'}. For the record, could you please state your name and position?`;
+            break;
+            
+        case 'media':
+            if (selectedPersona === 'time-pressure-broadcaster') {
+                openingGreeting = `We're joined now by ${roleTitle}${orgName}. We've got just a few minutes, so let's get straight to it - ${scenarioDescription ? `about ${scenarioDescription}, ` : ''}can you explain your position?`;
+            } else if (selectedPersona === 'sympathetic-professional') {
+                openingGreeting = `Welcome to the programme. I'm joined by ${roleTitle}${orgName}. Thank you for being with us today. ${scenarioDescription ? `Let's talk about ${scenarioDescription}. ` : ''}Can you start by telling us how this affects people?`;
+            } else {
+                openingGreeting = `Welcome to the programme. I'm joined by ${roleTitle}${orgName}. ${scenarioDescription ? `We're discussing ${scenarioDescription}. ` : ''}Let me start with the obvious question - what's your response to the recent criticism?`;
+            }
+            break;
+            
+        case 'consultation':
+            openingGreeting = `Hello, thank you for coming to speak with us today. I'm here representing ${selectedPersona === 'business-voice' ? 'local businesses' : selectedPersona === 'informed-activist' ? 'community groups' : 'local residents'} who are concerned about ${scenarioDescription || 'these proposals'}. Can you help us understand what this means for our community?`;
+            break;
+            
+        case 'interview':
+            if (selectedPersona === 'supportive-developer') {
+                openingGreeting = `Welcome! Thanks so much for taking the time to speak with us today. We're really excited to learn more about you. Why don't you start by telling me what attracted you to this opportunity?`;
+            } else if (selectedPersona === 'senior-stakeholder') {
+                openingGreeting = `Good to meet you. I've reviewed your background - impressive experience at ${companyContext || 'your current organization'}. Let's dive right in - what's your vision for this role?`;
+            } else {
+                openingGreeting = `Thanks for coming in today. We're looking for someone who can really make an impact in this position. Tell me about your most significant achievement in your current role.`;
+            }
+            break;
+            
+        default:
+            openingGreeting = `Welcome to your training session. I'll be playing the role of ${personaData?.name || 'your interviewer'}. Are you ready to begin?`;
+    }
+    
+    // Set the opening message
     const messagesContainer = document.getElementById('chat-messages');
     if (messagesContainer) {
         messagesContainer.innerHTML = `
             <div class="message interviewer">
-                <strong>Interviewer:</strong> Welcome to your training session. I'll be playing the role of ${personaData?.name || 'your interviewer'}. Are you ready to begin?
+                <strong>Interviewer:</strong> ${openingGreeting}
             </div>
         `;
     }
+    
+    // Add opening to conversation history
+    conversationHistory.push({
+        role: 'interviewer',
+        content: openingGreeting,
+        timestamp: new Date().toISOString()
+    });
     
     updateVoiceStatus('ready', 'Ready for voice input');
 }
@@ -1173,13 +1250,15 @@ function handleKeyPress(event) {
     }
 }
 
-// UPDATED sendMessage function with response cleaning
+// UPDATED sendMessage to add debugging and ensure single message
 async function sendMessage() {
     const input = document.getElementById('user-input');
     if (!input) return;
     
     const message = input.value.trim();
     if (!message) return;
+    
+    console.log('📤 Sending user message:', message);
     
     // Add user message to conversation history
     conversationHistory.push({
@@ -1204,13 +1283,23 @@ async function sendMessage() {
     }
     
     try {
+        // Get AI response
         const rawResponse = await getAIResponse(message);
-        const response = cleanInterviewerResponse(rawResponse);
+        console.log('📥 Got AI response:', rawResponse);
         
+        // Clean the response
+        const response = cleanInterviewerResponse(rawResponse);
+        console.log('🧹 Cleaned response:', response);
+        
+        // Remove typing indicator
         const typingElement = document.getElementById('typing-indicator');
         if (typingElement) {
             typingElement.remove();
         }
+        
+        // Check current message count before adding
+        const messageCountBefore = messagesContainer.querySelectorAll('.message').length;
+        console.log('📊 Messages before adding:', messageCountBefore);
         
         // Add AI response to conversation history
         conversationHistory.push({
@@ -1219,10 +1308,15 @@ async function sendMessage() {
             timestamp: new Date().toISOString()
         });
         
-        // Add message as a single block
+        // Add message ONCE
         addMessage(response, 'interviewer');
         
-        // Convert response to speech
+        // Check message count after adding
+        const messageCountAfter = messagesContainer.querySelectorAll('.message').length;
+        console.log('📊 Messages after adding:', messageCountAfter);
+        console.log('📊 Added messages:', messageCountAfter - messageCountBefore);
+        
+        // Speak the response
         console.log('🔊 Speaking response:', response.substring(0, 50) + '...');
         await speakResponse(response);
         
@@ -1260,13 +1354,12 @@ function addMessage(message, sender) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// UPDATED getAIResponse function with formatting instructions
+// UPDATED getAIResponse - Remove key messages context and add strict single-response instruction
 async function getAIResponse(userMessage) {
     const personaKey = `${selectedScenario}-${selectedPersona}`;
     
     console.log('🔍 Getting response for:', personaKey);
     
-    // Use the updated prompts with more natural lengths
     let systemPrompt = systemPrompts[personaKey];
     
     if (!systemPrompt) {
@@ -1288,7 +1381,7 @@ async function getAIResponse(userMessage) {
         conversationContext += '\nREMEMBER: Reference their previous answers. Point out contradictions. Build on what they\'ve said. Be reactive, not generic.\n';
     }
     
-    // Add scenario context
+    // Add scenario context (WITHOUT key messages)
     let scenarioContext = '';
     if (scenarioDescription) {
         scenarioContext += `\n\nScenario Context: ${scenarioDescription}`;
@@ -1300,11 +1393,7 @@ async function getAIResponse(userMessage) {
         scenarioContext += `\nOrganization: ${companyContext}`;
     }
     
-    // Add top lines context
-    if (topLines.length > 0) {
-        scenarioContext += `\n\nThe user wants to communicate these key messages: ${topLines.join(', ')}`;
-        scenarioContext += '\nOccasionally test whether they can naturally work these messages into their responses.';
-    }
+    // REMOVED: Key messages context - interviewer should NOT know these
     
     // Build trait instructions
     let traitInstructions = '\n\nCustomized traits for this session:\n';
@@ -1330,14 +1419,18 @@ async function getAIResponse(userMessage) {
         }
     }
     
-    // Combine all context with formatting instruction
+    // CRITICAL: Updated formatting instruction to prevent multiple responses
     const fullPrompt = systemPrompt + conversationContext + traitInstructions + scenarioContext + contextualInfo + 
-        '\n\nIMPORTANT: Deliver your response as a single, natural flowing statement or question. Do not use line breaks or separate paragraphs. Ensure your response reads naturally when spoken aloud.';
+        '\n\nCRITICAL INSTRUCTIONS:' +
+        '\n1. Give ONLY ONE response - either a single question OR a single statement, never multiple.' +
+        '\n2. Do NOT ask multiple questions. Choose the most important question to ask.' +
+        '\n3. Do NOT use line breaks, bullet points, or numbered lists.' +
+        '\n4. Your entire response must be a single flowing sentence or question.' +
+        '\n5. If you want to ask about multiple things, choose the MOST important one for now.';
     
-    console.log('📝 Final prompt preview:', fullPrompt.substring(0, 200) + '...');
+    console.log('📝 Prompt configured (key messages removed)');
     
     try {
-        // Call YOUR secure Vercel API instead of OpenAI directly
         const response = await fetch('/api/openai', {
             method: 'POST',
             headers: {
@@ -1355,7 +1448,7 @@ async function getAIResponse(userMessage) {
                         content: userMessage
                     }
                 ],
-                max_tokens: 150, // Increased for more natural responses
+                max_tokens: 150,
                 temperature: 0.8
             })
         });
@@ -1367,8 +1460,13 @@ async function getAIResponse(userMessage) {
         const data = await response.json();
         const aiResponse = data.choices[0].message.content;
         
-        console.log('🤖 AI Response:', aiResponse);
-        return aiResponse;
+        console.log('🤖 Raw AI Response:', aiResponse);
+        
+        // Extra safety check - if response contains multiple sentences with questions, take first
+        const safeResponse = ensureSingleQuestion(aiResponse);
+        console.log('🔒 Safe response:', safeResponse);
+        
+        return safeResponse;
         
     } catch (error) {
         console.error('💥 Error in getAIResponse:', error);
@@ -1539,6 +1637,25 @@ function speakWithBrowserTTS(text) {
     }
 }
 
+// DIAGNOSTIC: Add this function to check for duplicate message issues
+function checkForDuplicateMessages() {
+    const messages = document.querySelectorAll('.message.interviewer');
+    const contents = new Set();
+    let duplicates = 0;
+    
+    messages.forEach((msg, index) => {
+        const content = msg.textContent;
+        if (contents.has(content)) {
+            console.warn(`Duplicate message found at index ${index}:`, content);
+            duplicates++;
+        }
+        contents.add(content);
+    });
+    
+    console.log(`Total interviewer messages: ${messages.length}, Duplicates: ${duplicates}`);
+    return duplicates;
+}
+
 // Test function to verify persona mapping
 function testPersonaMapping() {
     console.log('🧪 Testing Persona Mapping...');
@@ -1638,6 +1755,7 @@ window.addTopLine = addTopLine;
 window.removeTopLine = removeTopLine;
 window.resetForNewSession = resetForNewSession;
 window.signOut = signOut;
+window.checkForDuplicateMessages = checkForDuplicateMessages;
 
 // Navigation handler
 window.handleNavClick = function(section) {
