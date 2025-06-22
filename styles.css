@@ -563,14 +563,7 @@ nav {
     line-height: 1.4;
 }
 
-/* Upload Sections */
-.upload-sections {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 2rem;
-    margin-bottom: 2rem;
-}
-
+/* Upload Section */
 .upload-section {
     background: white;
     padding: 2rem;
@@ -914,10 +907,6 @@ nav {
 
     .step-text {
         display: none;
-    }
-
-    .upload-sections {
-        grid-template-columns: 1fr;
     }
     
     .navigation-buttons {
