@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -10,6 +10,19 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 </head>
 <body>
+    <!-- Cookie Notice -->
+    <div id="cookie-notice" style="position: fixed; bottom: 0; left: 0; right: 0; background: #333; color: white; padding: 1rem; text-align: center; z-index: 1000; display: none;">
+        <div class="container" style="display: flex; align-items: center; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+            <p style="margin: 0; flex: 1;">
+                We use essential cookies for authentication only. No tracking or advertising cookies. 
+                <a href="privacy.html#cookies" target="_blank" style="color: #667eea; text-decoration: underline;">Learn more</a>
+            </p>
+            <button onclick="acceptCookies()" style="background: #667eea; color: white; border: none; padding: 0.5rem 1.5rem; border-radius: 5px; cursor: pointer; font-weight: 600;">
+                Got it
+            </button>
+        </div>
+    </div>
+
     <header>
         <nav class="container">
             <div class="logo">Training Pro</div>
