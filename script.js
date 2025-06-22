@@ -240,7 +240,7 @@ function resetApplicationState() {
     topLinesTracking = {}; // Reset tracking
     
     // Reset UI
-    document.body.className = '';
+    // REMOVED: document.body.className = '';
     document.querySelectorAll('.scenario-card').forEach(card => {
         card.classList.remove('active');
     });
@@ -501,7 +501,7 @@ function resetForNewSession() {
     }
     
     // Reset UI elements
-    document.body.className = '';
+    // REMOVED: document.body.className = '';
     document.querySelectorAll('.scenario-card').forEach(card => {
         card.classList.remove('active');
     });
@@ -897,8 +897,8 @@ function selectScenario(scenario) {
     });
     document.querySelector(`[data-scenario="${scenario}"]`).classList.add('active');
     
-    // Apply theme
-    document.body.className = `${scenario}-theme`;
+    // REMOVED: Theme switching
+    // document.body.className = `${scenario}-theme`;
     
     // Enable next button
     const nextBtn = document.getElementById('next-to-page-2');
