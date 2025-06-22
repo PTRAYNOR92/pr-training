@@ -1,5 +1,6 @@
 // Firebase Authentication Variables
-le// Firebase Authentication Variables
+// PRIVACY POLICY UPDATE: Added cookie notice functionality
+// LOGIN FIX: Added step indicator visibility management
 let currentUser = null;
 let sessionRating = 0;
 
@@ -29,15 +30,25 @@ let speechSynthesis = window.speechSynthesis;
 let useElevenLabs = true; // Flag to track if we should use ElevenLabs
 
 // Firebase Authentication Functions
+// FIXED: Added step indicator visibility handling for login/logout flow
 auth.onAuthStateChanged(function(user) {
     console.log('🔥 Auth state changed:', user ? 'LOGGED IN' : 'LOGGED OUT');
     if (user) {
         currentUser = user;
         console.log('✅ User logged in:', user.email);
         showLoggedInState();
-        // Only redirect to page 1 if we're on the login page
-        if (document.getElementById('login-page').classList.contains('active')) {
+        
+        // Check if we're on login page
+        const loginPage = document.getElementById('login-page');
+        if (loginPage && loginPage.classList.contains('active')) {
             console.log('📱 Redirecting to main app...');
+            
+            // Show step indicator when leaving login page
+            const stepIndicator = document.querySelector('.step-indicator');
+            if (stepIndicator) {
+                stepIndicator.style.display = 'flex';
+            }
+            
             goToPage(1);
         }
     } else {
@@ -82,6 +93,12 @@ function showLoginPage() {
     document.getElementById('login-page').classList.add('active');
     // Hide logout link
     document.getElementById('logout-link').style.display = 'none';
+    
+    // IMPORTANT: Hide the step indicator when on login page
+    const stepIndicator = document.querySelector('.step-indicator');
+    if (stepIndicator) {
+        stepIndicator.style.display = 'none';
+    }
 }
 
 function showLoggedInState() {
@@ -246,6 +263,12 @@ function resetApplicationState() {
                 <input type="text" class="top-line" placeholder="Key message 1" maxlength="150">
             </div>
         `;
+    }
+    
+    // Hide step indicator when resetting (going back to login)
+    const stepIndicator = document.querySelector('.step-indicator');
+    if (stepIndicator) {
+        stepIndicator.style.display = 'none';
     }
 }
 
@@ -525,6 +548,9 @@ function resetForNewSession() {
             </div>
         `;
     }
+    
+    // Go back to page 1 (not login, since user is still logged in)
+    goToPage(1);
 }
 
 // Your existing trait definitions and personas (keep exactly the same)
@@ -799,6 +825,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Check cookie notice
     checkCookieNotice();
     
+    // Hide step indicator initially (login page doesn't need it)
+    const stepIndicator = document.querySelector('.step-indicator');
+    if (stepIndicator) {
+        stepIndicator.style.display = 'none';
+    }
+    
     // Ensure login page is shown initially
     console.log('🔥 App loaded - waiting for Firebase auth...');
     showLoginPage();
@@ -890,6 +922,12 @@ function goToPage(pageNumber) {
         targetPage.classList.add('active');
     }
     currentPage = pageNumber;
+    
+    // Show step indicator for non-login pages
+    const stepIndicator = document.querySelector('.step-indicator');
+    if (stepIndicator) {
+        stepIndicator.style.display = 'flex';
+    }
     
     // Update step indicator
     updateStep(pageNumber);
@@ -1697,3 +1735,20 @@ window.checkFormFields = checkFormFields;
 
 // Cookie notice function (make global)
 window.acceptCookies = acceptCookies;
+
+// Emergency fix function if stuck on login page
+window.fixLogin = function() {
+    console.log('Running login fix...');
+    const user = firebase.auth().currentUser;
+    if (user) {
+        console.log('User is logged in as:', user.email);
+        document.getElementById('login-page').classList.remove('active');
+        document.getElementById('page-1').classList.add('active');
+        document.querySelector('.step-indicator').style.display = 'flex';
+        document.getElementById('logout-link').style.display = 'block';
+        updateStep(1);
+        console.log('✅ Should now be on page 1');
+    } else {
+        console.log('❌ No user logged in');
+    }
+};
