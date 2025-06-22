@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About - Training Pro</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">Training Pro</div>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="index.html">Training</a></li>
+                <li><a href="about.html" class="active">About</a></li>
+                <li><a href="privacy.html">Privacy</a></li>
+                <li><a href="javascript:void(0)" onclick="signOut()" id="logout-link" style="display: none;">Logout</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <h1>About Training Pro</h1>
+            <p>Master your professional communication with AI-powered training</p>
+        </div>
+    </section>
+
+    <div class="container">
+        <div class="main-content">
+            <div style="padding: 3rem; max-width: 800px; margin: 0 auto;">
+                <h2>What is Training Pro?</h2>
+                <p style="font-size: 1.1rem; line-height: 1.8; margin-bottom: 2rem;">
+                    Training Pro is an innovative AI-powered platform designed to help professionals excel in high-stakes communication scenarios. Whether you're preparing for a parliamentary committee appearance, a challenging media interview, public consultation, or job interview, our platform provides realistic practice with intelligent feedback.
+                </p>
+
+                <h3>Key Features</h3>
+                <ul style="font-size: 1.05rem; line-height: 1.8; margin-bottom: 2rem;">
+                    <li><strong>Voice Training:</strong> Practice with natural voice interaction using advanced speech recognition</li>
+                    <li><strong>AI Interviewers:</strong> Realistic personas that adapt to your responses</li>
+                    <li><strong>Scenario Customization:</strong> Tailor sessions to your specific needs</li>
+                    <li><strong>Key Message Tracking:</strong> Ensure you land your important points</li>
+                    <li><strong>Performance Analysis:</strong> Get detailed feedback on your session</li>
+                </ul>
+
+                <h3>Who It's For</h3>
+                <p style="font-size: 1.05rem; line-height: 1.8; margin-bottom: 2rem;">
+                    Training Pro is designed for anyone who needs to communicate effectively under pressure:
+                </p>
+                <ul style="font-size: 1.05rem; line-height: 1.8; margin-bottom: 2rem;">
+                    <li>Government officials and civil servants</li>
+                    <li>Corporate executives and spokespersons</li>
+                    <li>Job seekers at all levels</li>
+                    <li>Public affairs professionals</li>
+                    <li>Anyone facing challenging interviews or questioning</li>
+                </ul>
+
+                <div style="background: #e7f3ff; padding: 2rem; border-radius: 10px; margin: 2rem 0; text-align: center;">
+                    <h3>Ready to Practice?</h3>
+                    <p style="margin-bottom: 1.5rem;">Start your training session and build confidence for your next important appearance.</p>
+                    <a href="index.html" class="btn btn-primary" style="display: inline-block; padding: 1rem 2.5rem; background: #3498db; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+                        Start Training
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs (minimal for auth check) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+    <script>
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyCjZov2fQgFvRi1uuauD9NP0scmjVaNi58",
+            authDomain: "training-pro-ai.firebaseapp.com",
+            projectId: "training-pro-ai",
+            storageBucket: "training-pro-ai.firebasestorage.app",
+            messagingSenderId: "499964476919",
+            appId: "1:499964476919:web:e9b494b0eaea3e701cc2f2"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        
+        // Simple auth check
+        auth.onAuthStateChanged(function(user) {
+            if (!user) {
+                window.location.href = 'login.html';
+            } else {
+                document.getElementById('logout-link').style.display = 'block';
+            }
+        });
+        
+        function signOut() {
+            if (confirm('Are you sure you want to sign out?')) {
+                auth.signOut().then(() => {
+                    window.location.href = 'login.html';
+                });
+            }
+        }
+    </script>
+</body>
+</html>
