@@ -17,6 +17,7 @@
                 <li><a href="#home">Home</a></li>
                 <li><a href="#training">Training</a></li>
                 <li><a href="#about">About</a></li>
+                <li><a href="privacy.html" target="_blank">Privacy</a></li>
                 <li><a href="#" onclick="signOut()" id="logout-link" style="display: none;">Logout</a></li>
             </ul>
         </nav>
@@ -61,6 +62,15 @@
                         <button onclick="signUpWithEmail()" id="signup-btn" style="width: 100%; padding: 0.8rem 2rem; border: 2px solid #667eea; background: transparent; color: #667eea; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s; opacity: 0.5;" disabled>
                             Create New Account
                         </button>
+                        
+                        <!-- Privacy Notice -->
+                        <div style="margin-top: 1.5rem; text-align: center; font-size: 0.85rem; color: #666;">
+                            <div style="background: #e7f3ff; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem;">
+                                <strong style="color: #155724;">🔒 Privacy:</strong> We don't store your training sessions, but they are processed by AI services.
+                            </div>
+                            By signing in or creating an account, you agree to our 
+                            <a href="privacy.html" target="_blank" style="color: #667eea; text-decoration: underline;">Privacy Policy</a>
+                        </div>
                         
                         <div id="auth-error" style="color: #dc3545; text-align: center; margin-top: 1rem; display: none; padding: 0.5rem; background: #f8d7da; border-radius: 4px;"></div>
                         <div id="auth-success" style="color: #28a745; text-align: center; margin-top: 1rem; display: none; padding: 0.5rem; background: #d4edda; border-radius: 4px;"></div>
@@ -324,6 +334,15 @@
         </div>
     </div>
 
+    <!-- Footer -->
+    <footer style="background: #f8f9fa; padding: 2rem 0; margin-top: 4rem; text-align: center; color: #666;">
+        <div class="container">
+            <p>&copy; 2025 Training Pro. All rights reserved. | 
+                <a href="privacy.html" style="color: #667eea; text-decoration: none;">Privacy Policy</a>
+            </p>
+        </div>
+    </footer>
+
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -345,10 +364,6 @@
         const db = firebase.firestore();
         const googleProvider = new firebase.auth.GoogleAuthProvider();
     </script>
-
-    <script src="script.js"></script>
-</body>
-</html>
 
     <script src="script.js"></script>
 </body>
