@@ -112,7 +112,14 @@ function signInWithGoogle() {
         .then((result) => {
             console.log('Google sign-in successful');
             showAuthMessage('Welcome! Redirecting to training...', 'success');
-            // User will be automatically redirected by onAuthStateChanged
+            // Force redirect after successful login
+            setTimeout(() => {
+                const stepIndicator = document.querySelector('.step-indicator');
+                if (stepIndicator) {
+                    stepIndicator.style.display = 'flex';
+                }
+                goToPage(1);
+            }, 500);
         })
         .catch((error) => {
             console.error('Google sign-in error:', error);
@@ -134,7 +141,14 @@ function signInWithEmail() {
         .then((result) => {
             console.log('Email sign-in successful');
             showAuthMessage('Welcome back! Redirecting...', 'success');
-            // User will be automatically redirected by onAuthStateChanged
+            // Force redirect after successful login
+            setTimeout(() => {
+                const stepIndicator = document.querySelector('.step-indicator');
+                if (stepIndicator) {
+                    stepIndicator.style.display = 'flex';
+                }
+                goToPage(1);
+            }, 500);
         })
         .catch((error) => {
             console.error('Email sign-in error:', error);
@@ -161,7 +175,14 @@ function signUpWithEmail() {
         .then((result) => {
             console.log('Account created successfully');
             showAuthMessage('Account created! Welcome to Training Pro!', 'success');
-            // User will be automatically redirected by onAuthStateChanged
+            // Force redirect after successful signup
+            setTimeout(() => {
+                const stepIndicator = document.querySelector('.step-indicator');
+                if (stepIndicator) {
+                    stepIndicator.style.display = 'flex';
+                }
+                goToPage(1);
+            }, 500);
         })
         .catch((error) => {
             console.error('Sign-up error:', error);
@@ -462,6 +483,12 @@ function displayFormattedFeedback(analysis) {
 // Modified endTraining function
 function endTraining() {
     if (confirm('Are you sure you want to end this training session?')) {
+        // Stop recording if active
+        if (isRecording && recognition) {
+            recognition.stop();
+            isRecording = false;
+        }
+        
         // Collect top lines for analysis
         collectTopLines();
         
@@ -840,34 +867,87 @@ function initializeVoiceRecognition() {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = false;
+        
+        // IMPORTANT: Set continuous to true so it doesn't stop automatically
+        recognition.continuous = true;
+        recognition.interimResults = true; // Show results as user speaks
         recognition.lang = 'en-GB';
+        recognition.maxAlternatives = 1;
+        
+        // Build up the full transcript
+        let fullTranscript = '';
         
         recognition.onstart = function() {
+            console.log('Voice recognition started');
+            fullTranscript = ''; // Reset transcript
             updateVoiceStatus('listening', 'Listening... (click to stop)');
             updateVoiceButton('recording');
         };
         
         recognition.onresult = function(event) {
-            const transcript = event.results[0][0].transcript;
-            document.getElementById('user-input').value = transcript;
-            updateVoiceStatus('processing', 'Processing...');
-            sendMessage();
+            let interimTranscript = '';
+            let finalTranscript = '';
+            
+            // Process all results
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                    finalTranscript += transcript + ' ';
+                } else {
+                    interimTranscript += transcript;
+                }
+            }
+            
+            // Update the input field with accumulated transcript
+            if (finalTranscript) {
+                fullTranscript += finalTranscript;
+            }
+            
+            const inputField = document.getElementById('user-input');
+            if (inputField) {
+                inputField.value = fullTranscript + interimTranscript;
+            }
         };
         
         recognition.onerror = function(event) {
-            updateVoiceStatus('error', 'Voice recognition error. Please try typing.');
             console.error('Speech recognition error:', event.error);
+            
+            // Handle specific errors
+            if (event.error === 'no-speech') {
+                updateVoiceStatus('listening', 'No speech detected. Keep talking or click stop...');
+                // Don't stop recording on no-speech error
+                return;
+            }
+            
+            updateVoiceStatus('error', 'Voice recognition error. Please try typing.');
             isRecording = false;
             updateVoiceButton('idle');
         };
         
         recognition.onend = function() {
-            isRecording = false;
-            updateVoiceButton('idle');
-            if (document.getElementById('voice-status').textContent.includes('Listening')) {
+            console.log('Voice recognition ended');
+            
+            // Only update UI if we're not supposed to be recording
+            if (!isRecording) {
+                updateVoiceButton('idle');
                 updateVoiceStatus('ready', 'Ready for voice input');
+                
+                // Send the message if there's content
+                const inputField = document.getElementById('user-input');
+                if (inputField && inputField.value.trim()) {
+                    sendMessage();
+                }
+            } else {
+                // If we're supposed to be recording but recognition ended, restart it
+                console.log('Restarting recognition...');
+                try {
+                    recognition.start();
+                } catch (e) {
+                    console.error('Failed to restart recognition:', e);
+                    isRecording = false;
+                    updateVoiceButton('idle');
+                    updateVoiceStatus('ready', 'Ready for voice input');
+                }
             }
         };
     } else {
@@ -1133,7 +1213,7 @@ function updateSummary() {
     }
 }
 
-// NEW: Enhanced voice control (click to start/stop)
+// UPDATED: Enhanced voice control to only stop on manual click
 function toggleVoiceRecognition() {
     if (!recognition) {
         alert('Voice recognition not supported in this browser');
@@ -1142,16 +1222,30 @@ function toggleVoiceRecognition() {
     
     if (isRecording) {
         // Stop recording
+        console.log('Stopping voice recognition...');
         recognition.stop();
         isRecording = false;
         updateVoiceButton('idle');
         updateVoiceStatus('ready', 'Ready for voice input');
+        
+        // Send the message if there's content
+        const inputField = document.getElementById('user-input');
+        if (inputField && inputField.value.trim()) {
+            updateVoiceStatus('processing', 'Processing...');
+            sendMessage();
+        }
     } else {
         // Start recording
-        recognition.start();
-        isRecording = true;
-        updateVoiceButton('recording');
-        updateVoiceStatus('listening', 'Listening... (click to stop)');
+        console.log('Starting voice recognition...');
+        try {
+            recognition.start();
+            isRecording = true;
+            updateVoiceButton('recording');
+            updateVoiceStatus('listening', 'Listening... (click to stop)');
+        } catch (e) {
+            console.error('Failed to start recognition:', e);
+            updateVoiceStatus('error', 'Failed to start voice recognition');
+        }
     }
 }
 
