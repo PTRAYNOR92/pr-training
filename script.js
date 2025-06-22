@@ -38,19 +38,35 @@ auth.onAuthStateChanged(function(user) {
         console.log('✅ User logged in:', user.email);
         showLoggedInState();
         
-        // Check if we're on login page
-        const loginPage = document.getElementById('login-page');
-        if (loginPage && loginPage.classList.contains('active')) {
-            console.log('📱 Redirecting to main app...');
+        // Force redirect from login page with a small delay to ensure DOM is ready
+        setTimeout(() => {
+            const loginPage = document.getElementById('login-page');
+            const currentlyOnLoginPage = loginPage && loginPage.classList.contains('active');
             
-            // Show step indicator when leaving login page
-            const stepIndicator = document.querySelector('.step-indicator');
-            if (stepIndicator) {
-                stepIndicator.style.display = 'flex';
+            if (currentlyOnLoginPage) {
+                console.log('📱 User is logged in but still on login page - redirecting...');
+                
+                // Hide login page
+                loginPage.classList.remove('active');
+                
+                // Show page 1
+                const page1 = document.getElementById('page-1');
+                if (page1) {
+                    page1.classList.add('active');
+                }
+                
+                // Show step indicator
+                const stepIndicator = document.querySelector('.step-indicator');
+                if (stepIndicator) {
+                    stepIndicator.style.display = 'flex';
+                }
+                
+                // Update step
+                updateStep(1);
+                
+                console.log('✅ Redirected to main app');
             }
-            
-            goToPage(1);
-        }
+        }, 100);
     } else {
         currentUser = null;
         console.log('❌ User logged out');
@@ -1836,10 +1852,14 @@ window.fixLogin = function() {
     const user = firebase.auth().currentUser;
     if (user) {
         console.log('User is logged in as:', user.email);
-        document.getElementById('login-page').classList.remove('active');
-        document.getElementById('page-1').classList.add('active');
-        document.querySelector('.step-indicator').style.display = 'flex';
-        document.getElementById('logout-link').style.display = 'block';
+        const loginPage = document.getElementById('login-page');
+        if (loginPage) loginPage.classList.remove('active');
+        const page1 = document.getElementById('page-1');
+        if (page1) page1.classList.add('active');
+        const stepIndicator = document.querySelector('.step-indicator');
+        if (stepIndicator) stepIndicator.style.display = 'flex';
+        const logoutLink = document.getElementById('logout-link');
+        if (logoutLink) logoutLink.style.display = 'block';
         updateStep(1);
         console.log('✅ Should now be on page 1');
     } else {
