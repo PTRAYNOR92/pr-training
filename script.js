@@ -1,6 +1,4 @@
 // Firebase Authentication Variables
-// PRIVACY POLICY UPDATE: Added cookie notice functionality
-// LOGIN FIX: Added step indicator visibility management
 let currentUser = null;
 let sessionRating = 0;
 
@@ -14,7 +12,6 @@ let companyContext = '';
 let policyFiles = [];
 let briefingFiles = [];
 let traitValues = {};
-// API keys are now securely stored on Vercel - no longer needed here
 
 // NEW: Top lines tracking
 let topLines = [];
@@ -29,252 +26,32 @@ let recognition = null;
 let speechSynthesis = window.speechSynthesis;
 let useElevenLabs = true; // Flag to track if we should use ElevenLabs
 
-// Firebase Authentication Functions
-// FIXED: Added step indicator visibility handling for login/logout flow
+// Simple auth check - redirect to login if not authenticated
 auth.onAuthStateChanged(function(user) {
-    console.log('🔥 Auth state changed:', user ? 'LOGGED IN' : 'LOGGED OUT');
-    if (user) {
-        currentUser = user;
-        console.log('✅ User logged in:', user.email);
-        showLoggedInState();
-        
-        // MORE AGGRESSIVE redirect from login page
-        const loginPage = document.getElementById('login-page');
-        const isOnLoginPage = loginPage && loginPage.classList.contains('active');
-        
-        if (isOnLoginPage || window.location.hash === '#about' || window.location.hash === '#home') {
-            console.log('📱 User is logged in but still seeing login - forcing redirect...');
-            
-            // Force hide ALL pages first
-            document.querySelectorAll('.page').forEach(page => {
-                page.classList.remove('active');
-            });
-            
-            // Force show page 1
-            const page1 = document.getElementById('page-1');
-            if (page1) {
-                page1.classList.add('active');
-            }
-            
-            // Force show step indicator
-            const stepIndicator = document.querySelector('.step-indicator');
-            if (stepIndicator) {
-                stepIndicator.style.display = 'flex';
-            }
-            
-            // Update step
-            updateStep(1);
-            
-            // Clear any problematic hash
-            if (window.location.hash) {
-                window.location.hash = '';
-            }
-            
-            console.log('✅ Forced redirect to main app');
-        }
-        
-        // Double-check after a delay to ensure it worked
-        setTimeout(() => {
-            const stillOnLogin = document.getElementById('login-page').classList.contains('active');
-            if (stillOnLogin) {
-                console.log('⚠️ Still on login after redirect, forcing again...');
-                document.getElementById('login-page').classList.remove('active');
-                document.getElementById('page-1').classList.add('active');
-                document.querySelector('.step-indicator').style.display = 'flex';
-                updateStep(1);
-            }
-        }, 500);
-        
+    if (!user) {
+        // Not logged in - redirect to login
+        console.log('No user logged in - redirecting to login page...');
+        window.location.href = 'login.html';
     } else {
-        currentUser = null;
-        console.log('❌ User logged out');
-        showLoginPage();
+        // User is logged in
+        console.log('User authenticated:', user.email);
+        currentUser = user;
+        
+        // Show logout link
+        const logoutLink = document.getElementById('logout-link');
+        if (logoutLink) {
+            logoutLink.style.display = 'block';
+        }
     }
 });
-
-function checkFormFields() {
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value.trim();
-    
-    const signinBtn = document.getElementById('signin-btn');
-    const signupBtn = document.getElementById('signup-btn');
-    
-    if (email && password && password.length >= 6) {
-        // Enable buttons
-        signinBtn.disabled = false;
-        signupBtn.disabled = false;
-        signinBtn.style.opacity = '1';
-        signupBtn.style.opacity = '1';
-        signinBtn.style.cursor = 'pointer';
-        signupBtn.style.cursor = 'pointer';
-    } else {
-        // Disable buttons
-        signinBtn.disabled = true;
-        signupBtn.disabled = true;
-        signinBtn.style.opacity = '0.5';
-        signupBtn.style.opacity = '0.5';
-        signinBtn.style.cursor = 'not-allowed';
-        signupBtn.style.cursor = 'not-allowed';
-    }
-}
-
-function showLoginPage() {
-    // Hide all pages
-    document.querySelectorAll('.page').forEach(page => {
-        page.classList.remove('active');
-    });
-    // Show login page
-    document.getElementById('login-page').classList.add('active');
-    // Hide logout link
-    document.getElementById('logout-link').style.display = 'none';
-    
-    // IMPORTANT: Hide the step indicator when on login page
-    const stepIndicator = document.querySelector('.step-indicator');
-    if (stepIndicator) {
-        stepIndicator.style.display = 'none';
-    }
-}
-
-function showLoggedInState() {
-    // Show logout link
-    document.getElementById('logout-link').style.display = 'block';
-}
-
-function signInWithGoogle() {
-    showAuthMessage('Signing in with Google...', 'success');
-    auth.signInWithPopup(googleProvider)
-        .then((result) => {
-            console.log('Google sign-in successful');
-            showAuthMessage('Welcome! Redirecting to training...', 'success');
-            // Force redirect after successful login
-            setTimeout(() => {
-                const stepIndicator = document.querySelector('.step-indicator');
-                if (stepIndicator) {
-                    stepIndicator.style.display = 'flex';
-                }
-                goToPage(1);
-            }, 500);
-        })
-        .catch((error) => {
-            console.error('Google sign-in error:', error);
-            showAuthError(error.message);
-        });
-}
-
-function signInWithEmail() {
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value.trim();
-    
-    if (!email || !password) {
-        showAuthError('Please enter both email and password to sign in');
-        return;
-    }
-    
-    showAuthMessage('Signing in...', 'success');
-    auth.signInWithEmailAndPassword(email, password)
-        .then((result) => {
-            console.log('Email sign-in successful');
-            showAuthMessage('Welcome back! Redirecting...', 'success');
-            // Force redirect after successful login
-            setTimeout(() => {
-                const stepIndicator = document.querySelector('.step-indicator');
-                if (stepIndicator) {
-                    stepIndicator.style.display = 'flex';
-                }
-                goToPage(1);
-            }, 500);
-        })
-        .catch((error) => {
-            console.error('Email sign-in error:', error);
-            showAuthError(getErrorMessage(error.code));
-        });
-}
-
-function signUpWithEmail() {
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value.trim();
-    
-    if (!email || !password) {
-        showAuthError('Please enter both email and password to create an account');
-        return;
-    }
-    
-    if (password.length < 6) {
-        showAuthError('Password must be at least 6 characters long');
-        return;
-    }
-    
-    showAuthMessage('Creating your account...', 'success');
-    auth.createUserWithEmailAndPassword(email, password)
-        .then((result) => {
-            console.log('Account created successfully');
-            showAuthMessage('Account created! Welcome to Training Pro!', 'success');
-            // Force redirect after successful signup
-            setTimeout(() => {
-                const stepIndicator = document.querySelector('.step-indicator');
-                if (stepIndicator) {
-                    stepIndicator.style.display = 'flex';
-                }
-                goToPage(1);
-            }, 500);
-        })
-        .catch((error) => {
-            console.error('Sign-up error:', error);
-            showAuthError(getErrorMessage(error.code));
-        });
-}
 
 function signOut() {
     if (confirm('Are you sure you want to sign out?')) {
         auth.signOut().then(() => {
             console.log('User signed out');
-            // Reset application state
-            resetApplicationState();
-            // User will be automatically redirected to login by onAuthStateChanged
+            // Redirect to login page
+            window.location.href = 'login.html';
         });
-    }
-}
-
-function showAuthError(message) {
-    const errorDiv = document.getElementById('auth-error');
-    const successDiv = document.getElementById('auth-success');
-    successDiv.style.display = 'none';
-    errorDiv.textContent = message;
-    errorDiv.style.display = 'block';
-    setTimeout(() => {
-        errorDiv.style.display = 'none';
-    }, 5000);
-}
-
-function showAuthMessage(message, type) {
-    const errorDiv = document.getElementById('auth-error');
-    const successDiv = document.getElementById('auth-success');
-    errorDiv.style.display = 'none';
-    successDiv.textContent = message;
-    successDiv.style.display = 'block';
-    if (type === 'success') {
-        setTimeout(() => {
-            successDiv.style.display = 'none';
-        }, 3000);
-    }
-}
-
-function getErrorMessage(errorCode) {
-    switch (errorCode) {
-        case 'auth/user-not-found':
-            return 'No account found with this email address.';
-        case 'auth/wrong-password':
-            return 'Incorrect password.';
-        case 'auth/email-already-in-use':
-            return 'An account with this email already exists.';
-        case 'auth/weak-password':
-            return 'Password should be at least 6 characters.';
-        case 'auth/invalid-email':
-            return 'Please enter a valid email address.';
-        case 'auth/too-many-requests':
-            return 'Too many failed attempts. Please try again later.';
-        default:
-            return 'An error occurred. Please try again.';
     }
 }
 
@@ -295,7 +72,6 @@ function resetApplicationState() {
     topLinesTracking = {}; // Reset tracking
     
     // Reset UI
-    // REMOVED: document.body.className = '';
     document.querySelectorAll('.scenario-card').forEach(card => {
         card.classList.remove('active');
     });
@@ -304,7 +80,7 @@ function resetApplicationState() {
     });
     
     // Clear form fields
-    const fields = ['scenario-description', 'your-role', 'company-context', 'email', 'password'];
+    const fields = ['scenario-description', 'your-role', 'company-context'];
     fields.forEach(fieldId => {
         const field = document.getElementById(fieldId);
         if (field) field.value = '';
@@ -318,12 +94,6 @@ function resetApplicationState() {
                 <input type="text" class="top-line" placeholder="Key message 1" maxlength="150">
             </div>
         `;
-    }
-    
-    // Hide step indicator when resetting (going back to login)
-    const stepIndicator = document.querySelector('.step-indicator');
-    if (stepIndicator) {
-        stepIndicator.style.display = 'none';
     }
 }
 
@@ -860,7 +630,7 @@ function acceptCookies() {
     }
 }
 
-// Initialize the application (modified for Firebase)
+// Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     initializeVoiceRecognition();
     setupEventListeners();
@@ -886,33 +656,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Check cookie notice
     checkCookieNotice();
     
-    // Hide step indicator initially (login page doesn't need it)
-    const stepIndicator = document.querySelector('.step-indicator');
-    if (stepIndicator) {
-        stepIndicator.style.display = 'none';
-    }
+    // Initialize first step
+    updateStep(1);
     
-    // Ensure login page is shown initially
-    console.log('🔥 App loaded - waiting for Firebase auth...');
-    showLoginPage();
-    
-    // Check if user is already logged in after a short delay
-    setTimeout(() => {
-        const user = firebase.auth().currentUser;
-        if (user) {
-            console.log('🔍 User already logged in on page load:', user.email);
-            // Force redirect from login
-            document.querySelectorAll('.page').forEach(page => {
-                page.classList.remove('active');
-            });
-            document.getElementById('page-1').classList.add('active');
-            if (stepIndicator) {
-                stepIndicator.style.display = 'flex';
-            }
-            updateStep(1);
-            document.getElementById('logout-link').style.display = 'block';
-        }
-    }, 1000);
+    console.log('🔥 App loaded - ready for training!');
 });
 
 function initializeVoiceRecognition() {
@@ -1871,15 +1618,10 @@ window.testVoices = testVoices;
 window.addTopLine = addTopLine;
 window.removeTopLine = removeTopLine;
 window.resetForNewSession = resetForNewSession;
+window.signOut = signOut;
 
 // Navigation handler
 window.handleNavClick = function(section) {
-    // Only handle navigation if user is logged in
-    if (!currentUser) {
-        console.log('Navigation blocked - user not logged in');
-        return;
-    }
-    
     console.log('Navigation to:', section);
     
     // For now, all navigation goes to page 1
@@ -1892,63 +1634,5 @@ window.handleNavClick = function(section) {
     }
 };
 
-// Firebase Auth functions (make global)
-window.signInWithGoogle = signInWithGoogle;
-window.signInWithEmail = signInWithEmail;
-window.signUpWithEmail = signUpWithEmail;
-window.signOut = signOut;
-window.checkFormFields = checkFormFields;
-
-// Cookie notice function (make global)
+// Cookie notice function
 window.acceptCookies = acceptCookies;
-
-// Emergency fix function if stuck on login page
-window.fixLogin = function() {
-    console.log('Running comprehensive login fix...');
-    
-    // Clear any problematic hash
-    if (window.location.hash) {
-        window.location.hash = '';
-    }
-    
-    // Force hide ALL pages
-    document.querySelectorAll('.page').forEach(page => {
-        page.classList.remove('active');
-    });
-    
-    // Check auth state
-    const user = firebase.auth().currentUser;
-    if (user) {
-        console.log('User is logged in as:', user.email);
-        
-        // Force show page 1
-        const page1 = document.getElementById('page-1');
-        if (page1) {
-            page1.classList.add('active');
-        } else {
-            console.error('Page 1 not found!');
-        }
-        
-        // Force show step indicator
-        const stepIndicator = document.querySelector('.step-indicator');
-        if (stepIndicator) {
-            stepIndicator.style.display = 'flex';
-        } else {
-            console.error('Step indicator not found!');
-        }
-        
-        // Force show logout link
-        const logoutLink = document.getElementById('logout-link');
-        if (logoutLink) {
-            logoutLink.style.display = 'block';
-        }
-        
-        // Update step
-        updateStep(1);
-        
-        console.log('✅ Login fix applied - you should now see the main page');
-    } else {
-        console.log('❌ No user logged in - showing login page');
-        showLoginPage();
-    }
-};
