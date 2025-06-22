@@ -38,35 +38,53 @@ auth.onAuthStateChanged(function(user) {
         console.log('✅ User logged in:', user.email);
         showLoggedInState();
         
-        // Force redirect from login page with a small delay to ensure DOM is ready
-        setTimeout(() => {
-            const loginPage = document.getElementById('login-page');
-            const currentlyOnLoginPage = loginPage && loginPage.classList.contains('active');
+        // MORE AGGRESSIVE redirect from login page
+        const loginPage = document.getElementById('login-page');
+        const isOnLoginPage = loginPage && loginPage.classList.contains('active');
+        
+        if (isOnLoginPage || window.location.hash === '#about' || window.location.hash === '#home') {
+            console.log('📱 User is logged in but still seeing login - forcing redirect...');
             
-            if (currentlyOnLoginPage) {
-                console.log('📱 User is logged in but still on login page - redirecting...');
-                
-                // Hide login page
-                loginPage.classList.remove('active');
-                
-                // Show page 1
-                const page1 = document.getElementById('page-1');
-                if (page1) {
-                    page1.classList.add('active');
-                }
-                
-                // Show step indicator
-                const stepIndicator = document.querySelector('.step-indicator');
-                if (stepIndicator) {
-                    stepIndicator.style.display = 'flex';
-                }
-                
-                // Update step
-                updateStep(1);
-                
-                console.log('✅ Redirected to main app');
+            // Force hide ALL pages first
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            
+            // Force show page 1
+            const page1 = document.getElementById('page-1');
+            if (page1) {
+                page1.classList.add('active');
             }
-        }, 100);
+            
+            // Force show step indicator
+            const stepIndicator = document.querySelector('.step-indicator');
+            if (stepIndicator) {
+                stepIndicator.style.display = 'flex';
+            }
+            
+            // Update step
+            updateStep(1);
+            
+            // Clear any problematic hash
+            if (window.location.hash) {
+                window.location.hash = '';
+            }
+            
+            console.log('✅ Forced redirect to main app');
+        }
+        
+        // Double-check after a delay to ensure it worked
+        setTimeout(() => {
+            const stillOnLogin = document.getElementById('login-page').classList.contains('active');
+            if (stillOnLogin) {
+                console.log('⚠️ Still on login after redirect, forcing again...');
+                document.getElementById('login-page').classList.remove('active');
+                document.getElementById('page-1').classList.add('active');
+                document.querySelector('.step-indicator').style.display = 'flex';
+                updateStep(1);
+            }
+        }, 500);
+        
     } else {
         currentUser = null;
         console.log('❌ User logged out');
@@ -877,6 +895,24 @@ document.addEventListener('DOMContentLoaded', function() {
     // Ensure login page is shown initially
     console.log('🔥 App loaded - waiting for Firebase auth...');
     showLoginPage();
+    
+    // Check if user is already logged in after a short delay
+    setTimeout(() => {
+        const user = firebase.auth().currentUser;
+        if (user) {
+            console.log('🔍 User already logged in on page load:', user.email);
+            // Force redirect from login
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById('page-1').classList.add('active');
+            if (stepIndicator) {
+                stepIndicator.style.display = 'flex';
+            }
+            updateStep(1);
+            document.getElementById('logout-link').style.display = 'block';
+        }
+    }, 1000);
 });
 
 function initializeVoiceRecognition() {
@@ -1836,6 +1872,26 @@ window.addTopLine = addTopLine;
 window.removeTopLine = removeTopLine;
 window.resetForNewSession = resetForNewSession;
 
+// Navigation handler
+window.handleNavClick = function(section) {
+    // Only handle navigation if user is logged in
+    if (!currentUser) {
+        console.log('Navigation blocked - user not logged in');
+        return;
+    }
+    
+    console.log('Navigation to:', section);
+    
+    // For now, all navigation goes to page 1
+    // You can expand this later to show different content
+    if (section === 'home' || section === 'training') {
+        goToPage(1);
+    } else if (section === 'about') {
+        // Could show an about modal or page in the future
+        alert('About Training Pro: AI-powered training for professional interviews and media appearances.');
+    }
+};
+
 // Firebase Auth functions (make global)
 window.signInWithGoogle = signInWithGoogle;
 window.signInWithEmail = signInWithEmail;
@@ -1848,21 +1904,51 @@ window.acceptCookies = acceptCookies;
 
 // Emergency fix function if stuck on login page
 window.fixLogin = function() {
-    console.log('Running login fix...');
+    console.log('Running comprehensive login fix...');
+    
+    // Clear any problematic hash
+    if (window.location.hash) {
+        window.location.hash = '';
+    }
+    
+    // Force hide ALL pages
+    document.querySelectorAll('.page').forEach(page => {
+        page.classList.remove('active');
+    });
+    
+    // Check auth state
     const user = firebase.auth().currentUser;
     if (user) {
         console.log('User is logged in as:', user.email);
-        const loginPage = document.getElementById('login-page');
-        if (loginPage) loginPage.classList.remove('active');
+        
+        // Force show page 1
         const page1 = document.getElementById('page-1');
-        if (page1) page1.classList.add('active');
+        if (page1) {
+            page1.classList.add('active');
+        } else {
+            console.error('Page 1 not found!');
+        }
+        
+        // Force show step indicator
         const stepIndicator = document.querySelector('.step-indicator');
-        if (stepIndicator) stepIndicator.style.display = 'flex';
+        if (stepIndicator) {
+            stepIndicator.style.display = 'flex';
+        } else {
+            console.error('Step indicator not found!');
+        }
+        
+        // Force show logout link
         const logoutLink = document.getElementById('logout-link');
-        if (logoutLink) logoutLink.style.display = 'block';
+        if (logoutLink) {
+            logoutLink.style.display = 'block';
+        }
+        
+        // Update step
         updateStep(1);
-        console.log('✅ Should now be on page 1');
+        
+        console.log('✅ Login fix applied - you should now see the main page');
     } else {
-        console.log('❌ No user logged in');
+        console.log('❌ No user logged in - showing login page');
+        showLoginPage();
     }
 };
