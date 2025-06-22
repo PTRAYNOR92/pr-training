@@ -99,8 +99,7 @@
                     <div class="scenario-card" data-scenario="committee">
                         <img src="https://images.unsplash.com/photo-1560969184-10fe8719e047?w=600&q=80" 
                              alt="UK Parliament - Palace of Westminster" 
-                             loading="lazy"
-                             style="width: 100%; height: 200px; object-fit: cover; display: block;">
+                             loading="lazy">
                         <div class="scenario-card-content">
                             <h3>Select Committee</h3>
                             <p>Parliamentary committee appearances with detailed policy questioning</p>
@@ -109,8 +108,261 @@
                     <div class="scenario-card" data-scenario="media">
                         <img src="https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=600&q=80" 
                              alt="Media Interview Professional" 
-                             loading="lazy"
-                             style="width: 100%; height: 200px; object-fit: cover; display: block;">
+                             loading="lazy">
                         <div class="scenario-card-content">
                             <h3>Media Interview</h3>
                             <p>TV, radio, and print interviews with various journalist styles</p>
+                        </div>
+                    </div>
+                    <div class="scenario-card" data-scenario="consultation">
+                        <img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&q=80" 
+                             alt="Public Consultation Meeting" 
+                             loading="lazy">
+                        <div class="scenario-card-content">
+                            <h3>Public Consultation</h3>
+                            <p>Community meetings and public engagement sessions</p>
+                        </div>
+                    </div>
+                    <div class="scenario-card" data-scenario="interview">
+                        <img src="https://images.unsplash.com/photo-1553877522-43269d4ea984?w=600&q=80" 
+                             alt="Job Interview in Progress" 
+                             loading="lazy">
+                        <div class="scenario-card-content">
+                            <h3>Job Interview</h3>
+                            <p>Professional interviews across all industries and levels</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="navigation-buttons">
+                    <div></div>
+                    <button class="btn btn-primary" id="next-to-page-2" disabled onclick="goToPage(2)">Continue</button>
+                </div>
+            </div>
+
+            <!-- Page 2: Scenario Customization -->
+            <div class="page" id="page-2">
+                <h2>Customize Your Scenario</h2>
+                <div class="scenario-inputs">
+                    <div class="input-group">
+                        <label for="scenario-description">Scenario Description</label>
+                        <textarea 
+                            id="scenario-description" 
+                            placeholder="Describe the specific situation you're preparing for..."
+                            rows="3"
+                        ></textarea>
+                        <small>What specific situation or issue will you be questioned about?</small>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="your-role">Your Role/Position</label>
+                        <input 
+                            type="text" 
+                            id="your-role" 
+                            placeholder="e.g., Energy Minister, Software Engineer, Marketing Director"
+                        >
+                        <small>What's your position or role in this scenario?</small>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="company-context">Company/Organization (Optional)</label>
+                        <input 
+                            type="text" 
+                            id="company-context" 
+                            placeholder="e.g., TechCorp, Department for Energy, Local Council"
+                        >
+                        <small>What organization are you representing?</small>
+                    </div>
+
+                    <!-- Top Lines Section -->
+                    <div class="input-group" style="background: #e3f2fd; border-color: #3498db;">
+                        <label for="top-lines" style="color: #3498db;">
+                            🎯 Key Messages to Land
+                            <span style="font-size: 0.9rem; font-weight: normal;">(Max 5)</span>
+                        </label>
+                        <div id="top-lines-container">
+                            <div class="top-line-input">
+                                <input type="text" class="top-line" placeholder="Key message 1" maxlength="150">
+                            </div>
+                        </div>
+                        <button onclick="addTopLine()" style="margin-top: 0.5rem; padding: 0.5rem 1rem; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 0.9rem;">
+                            + Add Another Key Message
+                        </button>
+                        <small style="color: #2980b9;">These are the main points you want to communicate effectively during your session</small>
+                    </div>
+                </div>
+
+                <div class="upload-sections">
+                    <div class="upload-section">
+                        <h4>📋 Supporting Documents</h4>
+                        <div class="upload-area" onclick="document.getElementById('policy-input').click()">
+                            <p>Upload relevant documents, policies, or materials</p>
+                            <p style="font-size: 0.9rem; opacity: 0.7;">PDF, Word, or text files</p>
+                        </div>
+                        <input type="file" id="policy-input" style="display: none;" accept=".pdf,.doc,.docx,.txt" multiple>
+                        <div id="policy-files"></div>
+                    </div>
+                    
+                    <div class="upload-section">
+                        <h4>📊 Briefing Materials</h4>
+                        <div class="upload-area" onclick="document.getElementById('briefing-input').click()">
+                            <p>Upload statistics, reports, background information</p>
+                            <p style="font-size: 0.9rem; opacity: 0.7;">PDF, Word, or text files</p>
+                        </div>
+                        <input type="file" id="briefing-input" style="display: none;" accept=".pdf,.doc,.docx,.txt" multiple>
+                        <div id="briefing-files"></div>
+                    </div>
+                </div>
+
+                <div class="navigation-buttons">
+                    <button class="btn btn-secondary" onclick="goToPage(1)">Back</button>
+                    <button class="btn btn-primary" onclick="goToPage(3)">Continue</button>
+                </div>
+            </div>
+
+            <!-- Page 3: Persona Selection -->
+            <div class="page" id="page-3">
+                <h2>Select Your Interviewer</h2>
+                <div class="personas" id="personas-container">
+                    <!-- Populated by JavaScript -->
+                </div>
+
+                <div class="trait-sliders" id="trait-sliders" style="display: none;">
+                    <h4>Customize Interviewer Traits</h4>
+                    <div class="sliders-grid" id="sliders-container">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+
+                <div class="navigation-buttons">
+                    <button class="btn btn-secondary" onclick="goToPage(2)">Back</button>
+                    <button class="btn btn-primary" id="next-to-page-4" onclick="goToPage(4)" disabled>Continue</button>
+                </div>
+            </div>
+
+            <!-- Page 4: Final Preparation -->
+            <div class="page" id="page-4">
+                <h2>Final Preparation</h2>
+                <div style="text-align: center; padding: 2rem;">
+                    <div id="scenario-summary">
+                        <h3>Training Session Summary</h3>
+                        <div style="background: #f8f9fa; padding: 2rem; border-radius: 10px; margin: 2rem 0; text-align: left;">
+                            <p><strong>Scenario:</strong> <span id="summary-scenario"></span></p>
+                            <p><strong>Your Role:</strong> <span id="summary-role"></span></p>
+                            <p><strong>Interviewer:</strong> <span id="summary-persona"></span></p>
+                            <p><strong>Key Messages:</strong> <span id="summary-top-lines"></span></p>
+                            <p><strong>Voice Training:</strong> Enabled</p>
+                        </div>
+                    </div>
+
+                    <div style="background: #e7f3ff; padding: 1.5rem; border-radius: 10px; margin: 2rem 0;">
+                        <h4>🎤 Voice Training Tips</h4>
+                        <ul style="text-align: left; margin-top: 1rem;">
+                            <li>Ensure your microphone is working</li>
+                            <li>Find a quiet environment</li>
+                            <li>Speak clearly and at normal pace</li>
+                            <li>You can fall back to typing if needed</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="navigation-buttons">
+                    <button class="btn btn-secondary" onclick="goToPage(3)">Back</button>
+                    <button class="btn btn-primary" onclick="startTraining()">Begin Training Session</button>
+                </div>
+            </div>
+
+            <!-- Page 5: Training Interface -->
+            <div class="page" id="page-5">
+                <div class="training-interface">
+                    <div class="training-header">
+                        <div class="training-status">
+                            <div class="status-item status-live">● TRAINING SESSION</div>
+                            <div class="status-item status-voice" id="voice-status-indicator">🎤 VOICE ENABLED</div>
+                        </div>
+                        <h3 id="training-title">Training Session</h3>
+                        <p id="persona-description"></p>
+                    </div>
+
+                    <div class="chat-container">
+                        <div class="chat-header">
+                            <h4>Live Training Session</h4>
+                        </div>
+                        <div class="chat-messages" id="chat-messages">
+                            <div class="message interviewer">
+                                <strong>Interviewer:</strong> Welcome to your training session. Are you ready to begin?
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="voice-controls">
+                        <button class="voice-btn idle" id="voice-toggle">
+                            <span id="voice-icon">🎤</span>
+                            <span id="voice-text">Click to Speak</span>
+                        </button>
+                    </div>
+
+                    <div class="voice-status" id="voice-status">Ready for voice input</div>
+
+                    <div class="chat-input">
+                        <input type="text" id="user-input" placeholder="Or type your response..." onkeypress="handleKeyPress(event)">
+                        <button onclick="sendMessage()">Send</button>
+                    </div>
+
+                    <div class="navigation-buttons">
+                        <button class="btn btn-secondary" onclick="endTraining()">End Session</button>
+                        <button class="btn btn-secondary" onclick="resetForNewSession()">New Session</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feedback Page -->
+            <div class="page" id="feedback-page">
+                <div style="padding: 2rem;">
+                    <h2>Session Performance Analysis</h2>
+                    
+                    <div style="background: #f8f9fa; padding: 2rem; border-radius: 15px; margin: 2rem 0;">
+                        <h3>AI-Powered Feedback</h3>
+                        
+                        <div id="ai-feedback-content">
+                            <!-- This will be populated by AI analysis -->
+                            <div style="text-align: center; padding: 2rem;">
+                                <div class="loading-spinner"></div>
+                                <p>Analyzing your performance...</p>
+                            </div>
+                        </div>
+
+                        <div class="navigation-buttons" style="margin-top: 2rem;">
+                            <button class="btn btn-secondary" onclick="goToPage(1)">Start New Session</button>
+                            <button class="btn btn-primary" onclick="window.location.reload()">Practice Again</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <!-- Your Firebase Config -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCjZov2fQgFvRi1uuauD9NP0scmjVaNi58",
+            authDomain: "training-pro-ai.firebaseapp.com",
+            projectId: "training-pro-ai",
+            storageBucket: "training-pro-ai.firebasestorage.app",
+            messagingSenderId: "499964476919",
+            appId: "1:499964476919:web:e9b494b0eaea3e701cc2f2"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const googleProvider = new firebase.auth.GoogleAuthProvider();
+    </script>
+
+    <script src="script.js"></script>
+</body>
+</html>
