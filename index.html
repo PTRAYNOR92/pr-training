@@ -14,11 +14,11 @@
         <nav class="container">
             <div class="logo">Training Pro</div>
             <ul class="nav-links">
-                <li><a href="#home">Home</a></li>
-                <li><a href="#training">Training</a></li>
-                <li><a href="#about">About</a></li>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="index.html">Training</a></li>
+                <li><a href="about.html">About</a></li>
                 <li><a href="privacy.html">Privacy</a></li>
-                <li><a href="#" onclick="signOut()" id="logout-link" style="display: none;">Logout</a></li>
+                <li><a href="javascript:void(0)" onclick="signOut()" id="logout-link" style="display: none;">Logout</a></li>
             </ul>
         </nav>
     </header>
@@ -32,44 +32,6 @@
 
     <div class="container">
         <div class="main-content">
-            <!-- Login Page -->
-            <div class="page active" id="login-page">
-                <div style="display: flex; align-items: center; justify-content: center; min-height: 500px; padding: 2rem;">
-                    <div style="background: white; padding: 3rem; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 400px; width: 100%;">
-                        <h2 style="text-align: center; margin-bottom: 2rem; color: #1a1f36;">Welcome to Training Pro</h2>
-                        
-                        <!-- Google Sign In Button -->
-                        <button onclick="signInWithGoogle()" style="width: 100%; padding: 1rem; background: #4285f4; color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; margin-bottom: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: all 0.3s;">
-                            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" style="width: 20px; height: 20px;">
-                            Sign in with Google
-                        </button>
-                        
-                        <div style="text-align: center; margin: 1rem 0; color: #666;">or</div>
-                        
-                        <!-- Email/Password Form -->
-                        <div style="margin-bottom: 1.5rem;">
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1a1f36;">Email</label>
-                            <input type="email" id="email" placeholder="your@email.com" oninput="checkFormFields()" style="width: 100%; padding: 0.8rem; border: 2px solid #e9ecef; border-radius: 8px; font-size: 1rem; transition: border-color 0.3s;">
-                        </div>
-                        <div style="margin-bottom: 1.5rem;">
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1a1f36;">Password</label>
-                            <input type="password" id="password" placeholder="Enter password (min 6 characters)" oninput="checkFormFields()" style="width: 100%; padding: 0.8rem; border: 2px solid #e9ecef; border-radius: 8px; font-size: 1rem; transition: border-color 0.3s;">
-                        </div>
-                        
-                        <button onclick="signInWithEmail()" id="signin-btn" style="width: 100%; padding: 0.8rem 2rem; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; background: #3498db; color: white; margin-bottom: 1rem; transition: all 0.3s; opacity: 0.5;" disabled>
-                            Sign In
-                        </button>
-                        
-                        <button onclick="signUpWithEmail()" id="signup-btn" style="width: 100%; padding: 0.8rem 2rem; border: 2px solid #3498db; background: transparent; color: #3498db; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s; opacity: 0.5;" disabled>
-                            Create New Account
-                        </button>
-                        
-                        <div id="auth-error" style="color: #e74c3c; text-align: center; margin-top: 1rem; display: none; padding: 0.5rem; background: #fadbd8; border-radius: 4px;"></div>
-                        <div id="auth-success" style="color: #27ae60; text-align: center; margin-top: 1rem; display: none; padding: 0.5rem; background: #d5f4e6; border-radius: 4px;"></div>
-                    </div>
-                </div>
-            </div>
-
             <div class="step-indicator">
                 <div class="step active" id="step-1">
                     <div class="step-number">1</div>
@@ -94,7 +56,7 @@
             </div>
 
             <!-- Page 1: Scenario Selection -->
-            <div class="page" id="page-1">
+            <div class="page active" id="page-1">
                 <h2>Choose Your Training Scenario</h2>
                 <div class="scenarios" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem; margin-bottom: 3rem;">
                     <div class="scenario-card" data-scenario="committee">
