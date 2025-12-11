@@ -1,0 +1,23 @@
+{
+  "name": "pr-training",
+  "version": "1.0.0",
+  "description": "",
+  "main": "script.js",
+  "scripts": {
+    "start": "http-server -p 8080"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PTRAYNOR92/pr-training.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/PTRAYNOR92/pr-training/issues"
+  },
+  "homepage": "https://github.com/PTRAYNOR92/pr-training#readme",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}
