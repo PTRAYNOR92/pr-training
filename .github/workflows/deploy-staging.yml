@@ -1,0 +1,27 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: staging
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+      # TODO: add Azure Static Web Apps deploy action for apps/web/dist
+      # TODO: add Azure App Service deploy action for apps/api
+      - name: Placeholder
+        run: echo "Wire up Azure deploy actions. See infra/azure/README.md."
