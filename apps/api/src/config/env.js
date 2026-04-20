@@ -1,8 +1,11 @@
-// Typed env loader — fails fast on missing required vars.
-const required = (name) => {
+// Typed env loader — fails fast on missing required vars in production.
+// In test mode, required vars fall back to placeholders so unit/integration tests can run.
+const isTest = process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
+
+const required = (name, testDefault = 'test-placeholder') => {
   const v = process.env[name];
-  if (!v) throw new Error(`Missing required env var: ${name}`);
-  return v;
+  if (!v && !isTest) throw new Error(`Missing required env var: ${name}`);
+  return v || testDefault;
 };
 
 const optional = (name, fallback) => process.env[name] ?? fallback;
@@ -13,7 +16,7 @@ export const config = {
   logLevel: optional('LOG_LEVEL', 'info'),
 
   firebase: {
-    projectId: required('FIREBASE_PROJECT_ID'),
+    projectId: required('FIREBASE_PROJECT_ID', 'test-project'),
   },
 
   aiProvider: optional('AI_PROVIDER', 'azure-openai'),

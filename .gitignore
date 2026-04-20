@@ -159,3 +159,11 @@ Thumbs.db
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
+
+# vitest dev-server artifacts
+apps/**/vitest.config.js.timestamp-*
+apps/**/vitest.config.ts.timestamp-*
+
+# vitest dev-server artifacts
+apps/**/vitest.config.js.timestamp-*
+apps/**/vitest.config.ts.timestamp-*
