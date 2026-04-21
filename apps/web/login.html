@@ -161,8 +161,15 @@
             
             showAuthMessage('Creating account...', 'success');
             auth.createUserWithEmailAndPassword(email, password)
-                .then((result) => {
-                    showAuthMessage('Account created! Redirecting...', 'success');
+                .then(async (result) => {
+                    // AUTH-004 — fire verification email so the Firebase
+                    // console emailVerified flag can ever flip to true.
+                    try {
+                        await result.user.sendEmailVerification();
+                    } catch (e) {
+                        console.warn('sendEmailVerification failed:', e);
+                    }
+                    showAuthMessage('Account created! Check your email to verify. Redirecting...', 'success');
                     setTimeout(() => {
                         window.location.href = 'index.html';
                     }, 500);
