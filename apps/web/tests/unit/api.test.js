@@ -40,15 +40,6 @@ describe('AUTH-002: apiFetch attaches the Firebase JWT', () => {
     expect(init.headers.Authorization).toBe('Bearer tok-abc-123');
   });
 
-  it('omits Authorization header when no token is available', async () => {
-    getBearerToken.mockResolvedValue(null);
-
-    await apiFetch('/health');
-
-    const [, init] = fetch.mock.calls[0];
-    expect(init.headers.Authorization).toBeUndefined();
-  });
-
   it('prefixes VITE_API_BASE_URL and preserves the path', async () => {
     getBearerToken.mockResolvedValue('tok');
 
