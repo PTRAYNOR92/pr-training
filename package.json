@@ -14,13 +14,15 @@
     "lint": "eslint \"apps/**/src/**/*.{js,mjs,cjs}\" \"packages/**/src/**/*.{js,mjs,cjs}\"",
     "format": "prettier --write .",
     "test": "npm --workspaces --if-present run test",
-    "test:e2e": "playwright test --config tests/e2e/playwright.config.js"
+    "test:e2e": "playwright test --config tests/e2e/playwright.config.js",
+    "emulators": "firebase emulators:start"
   },
   "engines": {
     "node": ">=20.0.0"
   },
   "devDependencies": {
     "eslint": "^9.0.0",
+    "firebase-tools": "^13.7.0",
     "prettier": "^3.2.0"
   },
   "repository": {

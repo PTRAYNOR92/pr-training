@@ -34,3 +34,16 @@ if (window.firebase.firestore) {
 if (window.firebase.auth.GoogleAuthProvider) {
   window.googleProvider = new window.firebase.auth.GoogleAuthProvider();
 }
+
+// AUTH-005 — opt-in to the local emulator suite via VITE_FIREBASE_USE_EMULATOR=true.
+if (import.meta.env.VITE_FIREBASE_USE_EMULATOR === 'true') {
+  const authHost =
+    import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_HOST || 'http://127.0.0.1:9099';
+  window.auth.useEmulator(authHost, { disableWarnings: true });
+  if (window.db && window.db.useEmulator) {
+    const [fsHost, fsPort] = (
+      import.meta.env.VITE_FIREBASE_FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080'
+    ).split(':');
+    window.db.useEmulator(fsHost, Number(fsPort));
+  }
+}
