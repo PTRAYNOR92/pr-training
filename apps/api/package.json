@@ -6,7 +6,7 @@
   "description": "Secure API proxy for the PR Training App — validates Firebase JWTs, enforces quotas, forwards to Azure OpenAI and ElevenLabs.",
   "main": "src/index.js",
   "scripts": {
-    "dev": "node --watch src/index.js",
+    "dev": "node --watch --env-file=../../.env.local src/index.js",
     "start": "node src/index.js",
     "test": "vitest run",
     "test:watch": "vitest"
