@@ -71,36 +71,26 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 
-    <script>
-        // Firebase config
-        const firebaseConfig = {
-            apiKey: "%VITE_FIREBASE_API_KEY%",
-            authDomain: "%VITE_FIREBASE_AUTH_DOMAIN%",
-            projectId: "%VITE_FIREBASE_PROJECT_ID%",
-            storageBucket: "%VITE_FIREBASE_STORAGE_BUCKET%",
-            messagingSenderId: "%VITE_FIREBASE_MESSAGING_SENDER_ID%",
-            appId: "%VITE_FIREBASE_APP_ID%"
-        };
-        
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        
-        // Simple auth check
-        auth.onAuthStateChanged(function(user) {
+    <!-- AUTH-001 — single Firebase init (module) -->
+    <script type="module" src="/src/firebase-compat-init.js"></script>
+
+    <script type="module">
+        // Auth check + signOut global. Consumes window.auth from firebase-compat-init.js.
+        window.auth.onAuthStateChanged(function (user) {
             if (!user) {
                 window.location.href = 'login.html';
             } else {
                 document.getElementById('logout-link').style.display = 'block';
             }
         });
-        
-        function signOut() {
+
+        window.signOut = function () {
             if (confirm('Are you sure you want to sign out?')) {
-                auth.signOut().then(() => {
+                window.auth.signOut().then(() => {
                     window.location.href = 'login.html';
                 });
             }
-        }
+        };
     </script>
 </body>
 </html>

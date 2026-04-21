@@ -69,24 +69,14 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 
-    <!-- Firebase Config -->
-    <script>
-        const firebaseConfig = {
-            apiKey: "%VITE_FIREBASE_API_KEY%",
-            authDomain: "%VITE_FIREBASE_AUTH_DOMAIN%",
-            projectId: "%VITE_FIREBASE_PROJECT_ID%",
-            storageBucket: "%VITE_FIREBASE_STORAGE_BUCKET%",
-            messagingSenderId: "%VITE_FIREBASE_MESSAGING_SENDER_ID%",
-            appId: "%VITE_FIREBASE_APP_ID%"
-        };
-        
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const googleProvider = new firebase.auth.GoogleAuthProvider();
-    </script>
+    <!-- AUTH-001 — single Firebase init (module) -->
+    <script type="module" src="/src/firebase-compat-init.js"></script>
 
-    <!-- Login Script -->
-    <script>
+    <!-- Login Script (module so it runs after firebase-compat-init.js) -->
+    <script type="module">
+        const auth = window.auth;
+        const googleProvider = window.googleProvider;
+
         // Check if already logged in
         auth.onAuthStateChanged(function(user) {
             if (user) {
@@ -224,6 +214,12 @@
                     return 'An error occurred. Please try again.';
             }
         }
+
+        // onclick="" handlers in the HTML need these on window (modules are scoped).
+        window.signInWithGoogle = signInWithGoogle;
+        window.signInWithEmail = signInWithEmail;
+        window.signUpWithEmail = signUpWithEmail;
+        window.checkFormFields = checkFormFields;
     </script>
 </body>
 </html>
