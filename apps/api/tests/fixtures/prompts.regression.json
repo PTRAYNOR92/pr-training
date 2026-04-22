@@ -1,0 +1,71 @@
+{
+  "description": "AI-003 — ten representative prompts for the Azure OpenAI migration regression review. Run each against the legacy OpenAI deployment and the new Azure OpenAI (gpt-4o-mini) deployment, then score the outputs on the rubric in docs/ai-003-regression-checklist.md. A prompt passes when the Azure response scores within one rubric point of the legacy response on every dimension.",
+  "model": {
+    "legacy": "gpt-4o (OpenAI)",
+    "target": "gpt-4o-mini (Azure OpenAI)",
+    "maxTokens": 800,
+    "temperature": 0.7
+  },
+  "prompts": [
+    {
+      "id": "committee-01",
+      "scenario": "Select Committee",
+      "persona": "Sceptical MP",
+      "prompt": "You are a UK select committee MP known for forensic questioning. The witness is an energy minister defending a new nuclear subsidy. Open with your first question."
+    },
+    {
+      "id": "committee-02",
+      "scenario": "Select Committee",
+      "persona": "Chair",
+      "prompt": "As committee chair, summarise the preceding exchange in two sentences and pose a follow-up that probes cost assumptions."
+    },
+    {
+      "id": "media-01",
+      "scenario": "Media Interview",
+      "persona": "Broadsheet political editor",
+      "prompt": "Interview the Health Secretary about NHS winter pressures. Ask an open first question, then an adversarial follow-up."
+    },
+    {
+      "id": "media-02",
+      "scenario": "Media Interview",
+      "persona": "Breakfast TV host",
+      "prompt": "Warm, friendly tone. Ask a tech CEO about layoffs at their firm without being hostile — but do not let them deflect."
+    },
+    {
+      "id": "consultation-01",
+      "scenario": "Public Consultation",
+      "persona": "Concerned resident",
+      "prompt": "You live next to a proposed housing development. Ask the council planner about traffic, school places, and flood risk in a single question."
+    },
+    {
+      "id": "consultation-02",
+      "scenario": "Public Consultation",
+      "persona": "Community representative",
+      "prompt": "Chair a community meeting. Open with a one-paragraph framing, then invite the first public question."
+    },
+    {
+      "id": "interview-01",
+      "scenario": "Job Interview",
+      "persona": "Engineering hiring manager",
+      "prompt": "Interview a candidate for a senior backend role. Start with a behavioural question about handling a production incident."
+    },
+    {
+      "id": "interview-02",
+      "scenario": "Job Interview",
+      "persona": "Panel member (non-technical)",
+      "prompt": "Ask a scenario question about stakeholder conflict for a product management candidate."
+    },
+    {
+      "id": "feedback-01",
+      "scenario": "Post-session Feedback",
+      "persona": "Coach",
+      "prompt": "The trainee avoided the question about cost overruns three times. Give constructive, specific feedback on how they could have handled it better without being defensive."
+    },
+    {
+      "id": "feedback-02",
+      "scenario": "Post-session Feedback",
+      "persona": "Coach",
+      "prompt": "The trainee landed all three of their key messages naturally. Give praise that is specific enough to be actionable (not generic)."
+    }
+  ]
+}
