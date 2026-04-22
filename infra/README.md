@@ -6,7 +6,8 @@ Infrastructure-as-code for the PR Training App. Staging and production environme
 
 | Path | Purpose |
 |---|---|
-| `azure/bicep/main.bicep` | Azure resources: Static Web App, App Service, Key Vault, Application Insights |
+| `azure/bicep/main.bicep` | Azure resources: Static Web App, App Service, Key Vault, Application Insights, Azure OpenAI (AI-001) |
+| `azure/bicep/modules/openai.bicep` | Azure OpenAI account + gpt-4o-mini deployment (AI-001) |
 | `azure/bicep/parameters/staging.json` | Environment-specific parameters for staging |
 | `azure/bicep/parameters/production.json` | Environment-specific parameters for production |
 | `firebase/firebase.json` | Firebase project config + emulator ports |
