@@ -958,3 +958,29 @@ nav {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--primary-blue);
 }
+
+/* FE-005 — error surfaces (toast + inline) */
+.app-toast {
+    position: fixed;
+    top: 1.5rem;
+    right: 1.5rem;
+    z-index: 9999;
+    max-width: 360px;
+    padding: 0.875rem 1.125rem;
+    border-radius: 8px;
+    background: var(--danger);
+    color: #fff;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+
+.app-inline-error {
+    margin: 0.75rem 0;
+    padding: 0.75rem 1rem;
+    border-left: 4px solid var(--danger);
+    background: #fdecea;
+    color: #8b1a1a;
+    border-radius: 4px;
+    font-size: 0.95rem;
+}
