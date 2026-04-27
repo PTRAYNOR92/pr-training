@@ -36,7 +36,7 @@ export function createJwtValidatorMiddleware({ jwks, projectId } = {}) {
 
       req.user = { uid: payload.sub, email: payload.email, claims: payload };
       next();
-    } catch (err) {
+    } catch (_err) {
       res.status(401).json({ error: 'Invalid or expired token' });
     }
   };

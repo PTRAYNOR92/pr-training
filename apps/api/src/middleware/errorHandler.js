@@ -2,7 +2,6 @@
 import { config } from '../config/env.js';
 import { logger } from '../utils/logger.js';
 
-// eslint-disable-next-line no-unused-vars
 export function errorHandler(err, req, res, _next) {
   logger.error({ err, url: req.url }, 'Request failed');
   const status = err.status || 500;
