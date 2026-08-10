@@ -1,0 +1,8 @@
+# Default owners
+*                       @PTRAYNOR92
+
+# Security-sensitive areas — require extra review
+/apps/api/src/middleware/   @PTRAYNOR92
+/apps/api/src/providers/    @PTRAYNOR92
+/infra/                     @PTRAYNOR92
+/SECURITY.md                @PTRAYNOR92

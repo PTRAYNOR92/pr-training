@@ -1,0 +1,22 @@
+{
+  "name": "@pr-training/web",
+  "version": "2.0.0-0",
+  "private": true,
+  "type": "module",
+  "description": "PR Training App frontend — static SPA hosted on Azure Static Web Apps.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "firebase": "^10.12.0"
+  },
+  "devDependencies": {
+    "vite": "^5.2.0",
+    "vitest": "^1.5.0",
+    "jsdom": "^24.0.0"
+  }
+}

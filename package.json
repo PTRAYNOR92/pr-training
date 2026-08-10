@@ -1,23 +1,33 @@
 {
   "name": "pr-training",
-  "version": "1.0.0",
-  "description": "",
-  "main": "script.js",
+  "version": "2.0.0-0",
+  "private": true,
+  "description": "PR Training App monorepo — static web frontend, secure Node.js API proxy, shared schemas, and infra-as-code. See REPO_STRUCTURE.md for layout.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "start": "http-server -p 8080"
+    "dev:web": "npm --workspace apps/web run dev",
+    "dev:api": "npm --workspace apps/api run dev",
+    "build": "npm --workspaces --if-present run build",
+    "lint": "eslint \"apps/**/src/**/*.{js,mjs,cjs}\" \"packages/**/src/**/*.{js,mjs,cjs}\"",
+    "format": "prettier --write .",
+    "test": "npm --workspaces --if-present run test",
+    "test:e2e": "playwright test --config tests/e2e/playwright.config.js",
+    "emulators": "firebase emulators:start"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "firebase-tools": "^13.7.0",
+    "prettier": "^3.2.0"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/PTRAYNOR92/pr-training.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/PTRAYNOR92/pr-training/issues"
-  },
-  "homepage": "https://github.com/PTRAYNOR92/pr-training#readme",
-  "devDependencies": {
-    "http-server": "^14.1.1"
-  }
+  "license": "UNLICENSED"
 }

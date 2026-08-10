@@ -1,0 +1,31 @@
+name: Deploy to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: 'Commit SHA to deploy (from staging)'
+        required: true
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production # requires reviewer approval via GitHub environment protection rules
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+      # TODO: blue/green deploy to App Service via slot swap
+      - name: Placeholder
+        run: echo "Blue/green deploy goes here. See SAD §4.2."
